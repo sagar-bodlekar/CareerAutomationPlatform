@@ -1,30 +1,18 @@
-"""FastAPI dependency injection for services and DB sessions."""
+"""Application service dependencies."""
 
-from collections.abc import AsyncGenerator
+from typing import Optional
 
-from fastapi import Depends
-
-from shared.database import async_session_factory
+from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.service import ExampleService
+from shared.database import get_session
+
+from ...services.application_service import ApplicationService
 
 
-async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Get database session."""
-    async with async_session_factory() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
+async def get_application_service(db: AsyncSession = Depends(get_session)) -> ApplicationService:
+    return ApplicationService(db)
 
 
-async def get_service(
-    session: AsyncSession = Depends(get_db_session),
-) -> ExampleService:
-    """Get example service instance."""
-    return ExampleService(session)
+async def get_current_user_id(request: Request) -> Optional[int]:
+    return None

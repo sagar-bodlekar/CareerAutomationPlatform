@@ -44,6 +44,12 @@ from match_service.app.models import *  # noqa: F401, F403
 # Phase 6: AI Orchestrator
 from ai_orchestrator.app.models import *  # noqa: F401, F403
 
+# Phase 7: Outreach Service
+from outreach_service.app.models import *  # noqa: F401, F403
+
+# Phase 7: Application Service
+from application_service.app.models import *  # noqa: F401, F403
+
 target_metadata = Base.metadata
 
 

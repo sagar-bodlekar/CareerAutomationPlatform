@@ -1,27 +1,34 @@
-"""FastAPI application factory for service template."""
+"""Outreach Service - FastAPI application."""
+
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from shared.config import settings
 from shared.logging import get_logger, setup_logging
 
-from app.api.router import api_router
+from .api.router import api_router
 
+setup_logging()
 logger = get_logger(__name__)
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifecycle manager."""
+    logger.info("Outreach Service starting up...")
+    yield
+    logger.info("Outreach Service shutting down...")
+
+
 def create_app() -> FastAPI:
-    """Create and configure the FastAPI application."""
-    setup_logging()
-
     app = FastAPI(
-        title=f"{settings.app_name} - outreach_service",
+        title="Outreach Service",
+        description="Cover letter and email generation service",
         version="0.1.0",
-        docs_url="/docs" if settings.app_debug else None,
-        redoc_url="/redoc" if settings.app_debug else None,
+        lifespan=lifespan,
     )
-
-    # CORS
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,
@@ -29,17 +36,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    # Include routers
     app.include_router(api_router, prefix="/api/v1")
-
-    # Health check
-    @app.get("/health")
-    async def health():
-        return {"status": "ok", "service": "service-template"}
-
-    logger.info("Service started", service="template", env=settings.app_env)
-
     return app
 
 

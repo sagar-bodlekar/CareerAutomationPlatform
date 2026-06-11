@@ -196,6 +196,50 @@ services:
         condition: service_healthy
     logging: *default-logging
 
+  # ─── Outreach Service ──────────────────────────────────────────
+  outreach-api:
+    build:
+      context: ./backend/outreach_service
+      dockerfile: Dockerfile
+    container_name: career-outreach-api
+    restart: unless-stopped
+    ports:
+      - "8006:8006"
+    environment:
+      - APP_NAME=${APP_NAME:-Career Platform}
+      - APP_ENV=${APP_ENV:-development}
+      - APP_DEBUG=${APP_DEBUG:-true}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging: *default-logging
+
+  # ─── Application Service ───────────────────────────────────────
+  application-api:
+    build:
+      context: ./backend/application_service
+      dockerfile: Dockerfile
+    container_name: career-application-api
+    restart: unless-stopped
+    ports:
+      - "8007:8007"
+    environment:
+      - APP_NAME=${APP_NAME:-Career Platform}
+      - APP_ENV=${APP_ENV:-development}
+      - APP_DEBUG=${APP_DEBUG:-true}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging: *default-logging
+
   # ─── AI Orchestrator Service ─────────────────────────────────
   ai-orchestrator:
     build:
