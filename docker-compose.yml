@@ -29,20 +29,20 @@ services:
     logging: *default-logging
 
   pgbouncer:
-    image: bitnami/pgbouncer:latest
+    image: edoburu/pgbouncer:latest
     container_name: career-pgbouncer
     restart: unless-stopped
     ports:
       - "5433:5432"
     environment:
-      POSTGRESQL_HOST: postgres
-      POSTGRESQL_PORT: 5432
-      POSTGRESQL_USERNAME: ${POSTGRES_USER:-postgres}
-      POSTGRESQL_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRESQL_DATABASE: ${POSTGRES_DB:-career_platform}
-      PGBOUNCER_POOL_MODE: transaction
-      PGBOUNCER_MAX_CLIENT_CONN: 100
-      PGBOUNCER_DEFAULT_POOL_SIZE: 25
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DB_NAME: ${POSTGRES_DB:-career_platform}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 100
+      DEFAULT_POOL_SIZE: 25
     depends_on:
       postgres:
         condition: service_healthy
@@ -106,8 +106,8 @@ services:
   # ─── Resume Service ─────────────────────────────────────────
   resume-api:
     build:
-      context: ./backend/resume_service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: resume_service/Dockerfile
     container_name: career-resume-api
     restart: unless-stopped
     ports:
@@ -133,8 +133,8 @@ services:
   # ─── Job Service ────────────────────────────────────────────
   job-api:
     build:
-      context: ./backend/job_service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: job_service/Dockerfile
     container_name: career-job-api
     restart: unless-stopped
     ports:
@@ -155,8 +155,8 @@ services:
   # ─── Auth Service ───────────────────────────────────────────
   auth-api:
     build:
-      context: ./backend/auth_service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: auth_service/Dockerfile
     container_name: career-auth-api
     restart: unless-stopped
     ports:
@@ -177,8 +177,8 @@ services:
   # ─── Match Service ───────────────────────────────────────────
   match-api:
     build:
-      context: ./backend/match_service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: match_service/Dockerfile
     container_name: career-match-api
     restart: unless-stopped
     ports:
@@ -199,8 +199,8 @@ services:
   # ─── Outreach Service ──────────────────────────────────────────
   outreach-api:
     build:
-      context: ./backend/outreach_service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: outreach_service/Dockerfile
     container_name: career-outreach-api
     restart: unless-stopped
     ports:
@@ -221,8 +221,8 @@ services:
   # ─── Application Service ───────────────────────────────────────
   application-api:
     build:
-      context: ./backend/application_service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: application_service/Dockerfile
     container_name: career-application-api
     restart: unless-stopped
     ports:
@@ -243,8 +243,8 @@ services:
   # ─── AI Orchestrator Service ─────────────────────────────────
   ai-orchestrator:
     build:
-      context: ./backend/ai_orchestrator
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: ai_orchestrator/Dockerfile
     container_name: career-ai-orchestrator
     restart: unless-stopped
     ports:
@@ -267,8 +267,8 @@ services:
   # ─── Profile Service ────────────────────────────────────────
   profile-api:
     build:
-      context: ./backend/profile_service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: profile_service/Dockerfile
     container_name: career-profile-api
     restart: unless-stopped
     ports:
@@ -289,8 +289,8 @@ services:
   # ─── Tracking Service ─────────────────────────────────────────
   tracking-api:
     build:
-      context: ./backend/tracking_service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: tracking_service/Dockerfile
     container_name: career-tracking-api
     restart: unless-stopped
     ports:
@@ -311,8 +311,8 @@ services:
   # ─── Notification Service ─────────────────────────────────────
   notification-api:
     build:
-      context: ./backend/notification_service
-      dockerfile: Dockerfile
+      context: ./backend
+      dockerfile: notification_service/Dockerfile
     container_name: career-notification-api
     restart: unless-stopped
     ports:

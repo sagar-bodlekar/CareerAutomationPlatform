@@ -2,10 +2,8 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-COPY backend/shared/ /app/shared/
-RUN pip install --no-cache-dir -e /app/shared/
-
-COPY backend/application_service/ /app/application_service/
+COPY shared/ /app/shared/
+COPY application_service/ /app/application_service/
 WORKDIR /app/application_service
 
 RUN pip install --no-cache-dir -r requirements.txt

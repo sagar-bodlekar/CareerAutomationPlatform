@@ -9,12 +9,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxslt-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy shared package and install first
-COPY backend/shared/ /app/shared/
-RUN pip install --no-cache-dir -e /app/shared/
-
-# Copy service code
-COPY backend/job_service/ /app/job_service/
+# Copy shared package and service code
+COPY shared/ /app/shared/
+COPY job_service/ /app/job_service/
 WORKDIR /app/job_service
 
 # Install service dependencies

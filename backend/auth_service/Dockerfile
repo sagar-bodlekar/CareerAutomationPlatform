@@ -8,16 +8,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy shared library and install it first
+COPY shared/ /app/shared/
+RUN pip install --no-cache-dir -e /app/shared/
 
-# Copy shared library
-COPY shared/ ./shared/
-RUN pip install -e ./shared/
+# Install service Python dependencies (filtering out editable paths that need project metadata)
+COPY auth_service/requirements.txt .
+RUN grep -v "^-e" requirements.txt > /tmp/requirements-base.txt && \
+    pip install --no-cache-dir -r /tmp/requirements-base.txt
 
 # Copy service code
-COPY app/ ./app/
+COPY auth_service/app/ ./app/
 
 # Runtime stage
 FROM python:3.12-slim
@@ -29,6 +30,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /app /app
 
 EXPOSE 8002
