@@ -1,0 +1,14 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Placeholder
+        run: echo "Deploy pipeline — configured when deployment target is set up"

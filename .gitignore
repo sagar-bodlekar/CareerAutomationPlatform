@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Node
+node_modules/
+frontend/dist/
+frontend/build/
+*.tsbuildinfo
+
+# Docker
+docker/volumes/
+docker/minio/data/
+docker/postgres/data/
+docker/redis/data/
+docker/ollama/models/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Logs
+*.log
+logs/
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Project specific
+backend/alembic/versions/*.pyc
