@@ -130,6 +130,28 @@ services:
         condition: service_healthy
     logging: *default-logging
 
+  # ─── Job Service ────────────────────────────────────────────
+  job-api:
+    build:
+      context: ./backend/job_service
+      dockerfile: Dockerfile
+    container_name: career-job-api
+    restart: unless-stopped
+    ports:
+      - "8004:8004"
+    environment:
+      - APP_NAME=${APP_NAME:-Career Platform}
+      - APP_ENV=${APP_ENV:-development}
+      - APP_DEBUG=${APP_DEBUG:-true}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging: *default-logging
+
   # ─── Auth Service ───────────────────────────────────────────
   auth-api:
     build:
