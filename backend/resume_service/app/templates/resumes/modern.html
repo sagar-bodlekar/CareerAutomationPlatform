@@ -1,0 +1,122 @@
+{% extends "resumes/base.html" %}
+{% block extra_styles %}
+.layout-sidebar {
+    display: flex;
+    gap: 2em;
+}
+.sidebar {
+    width: 30%;
+    background: {{ sidebar_bg | default('#f4f4f7') }};
+    padding: 1.5em;
+    border-radius: 4px;
+}
+.main-content {
+    width: 70%;
+}
+.sidebar-section {
+    margin-bottom: 1.5em;
+}
+.sidebar-section-title {
+    font-size: 10pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: {{ accent_color | default('#2c3e50') }};
+    margin-bottom: 0.5em;
+    padding-bottom: 0.2em;
+    border-bottom: 1px solid #ccc;
+}
+.contact-item {
+    font-size: 10pt;
+    margin-bottom: 0.3em;
+    color: #555;
+}
+{% endblock %}
+
+{% block content %}
+<div class="layout-sidebar">
+    <div class="sidebar">
+        <div class="header" style="text-align: left; border-bottom: none; padding-bottom: 0;">
+            <h1 style="font-size: 18pt;">{{ name }}</h1>
+            <div class="title" style="font-size: 12pt;">{{ title }}</div>
+        </div>
+
+        {% if contact %}
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Contact</div>
+            {% for item in contact %}
+            <div class="contact-item">{{ item }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if skills %}
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Skills</div>
+            {% for category, category_skills in skills.items() %}
+            <div class="skill-category" style="margin-bottom: 0.4em;">
+                <div class="skill-category-name" style="font-size: 10pt;">{{ category }}</div>
+                <div class="skill-tags" style="flex-direction: column;">
+                    {% for skill in category_skills %}
+                    <span class="skill-tag">{{ skill.name }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="main-content">
+        {% if summary %}
+        <div class="section">
+            <div class="section-title">Summary</div>
+            <p>{{ summary }}</p>
+        </div>
+        {% endif %}
+
+        {% if experiences %}
+        <div class="section">
+            <div class="section-title">Experience</div>
+            {% for exp in experiences %}
+            <div class="entry">
+                <div class="entry-header">
+                    <div>
+                        <div class="entry-title">{{ exp.job_title }}</div>
+                        <div class="entry-org">{{ exp.company_name }}</div>
+                    </div>
+                    <div class="entry-date">{{ exp.date_range }}</div>
+                </div>
+                {% if exp.achievements %}
+                <div class="entry-description">
+                    <ul>
+                        {% for achievement in exp.achievements %}
+                        <li>{{ achievement }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if education %}
+        <div class="section">
+            <div class="section-title">Education</div>
+            {% for edu in education %}
+            <div class="entry">
+                <div class="entry-header">
+                    <div>
+                        <div class="entry-title">{{ edu.degree }}</div>
+                        <div class="entry-org">{{ edu.institution }}</div>
+                    </div>
+                    <div class="entry-date">{{ edu.date_range }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

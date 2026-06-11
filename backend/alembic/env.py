@@ -32,8 +32,11 @@ from profile_service.app.models import *  # noqa: F401, F403
 # Phase 3: Auth Service
 from auth_service.app.models import *  # noqa: F401, F403
 
-# Phase 4+: Resume Service
-# from resume_service.app.models import *  # noqa: F401, F403
+# Phase 4: Resume Service
+from resume_service.app.models import *  # noqa: F401, F403
+
+# Phase 5+: Job Service
+# from job_service.app.models import *  # noqa: F401, F403
 
 target_metadata = Base.metadata
 

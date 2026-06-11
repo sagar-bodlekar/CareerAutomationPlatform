@@ -1,0 +1,112 @@
+{% extends "resumes/base.html" %}
+{% block extra_styles %}
+body {
+    font-family: 'Times New Roman', Times, serif;
+    color: #222;
+}
+
+.header {
+    text-align: center;
+    border-bottom: 1px solid #000;
+    padding-bottom: 0.5em;
+    margin-bottom: 1em;
+}
+
+.header h1 {
+    font-size: 22pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #000;
+}
+
+.section-title {
+    font-size: 11pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid #000;
+    padding-bottom: 0.2em;
+    margin-bottom: 0.5em;
+}
+
+.entry {
+    margin-bottom: 0.6em;
+}
+
+.entry-title {
+    font-weight: bold;
+    font-size: 11pt;
+}
+{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h1>{{ name }}</h1>
+    <div class="title" style="font-size: 12pt; font-style: italic;">{{ title }}</div>
+    <div class="contact">
+        {% if contact %}{{ contact | join(' &bull; ') }}{% endif %}
+    </div>
+</div>
+
+{% if summary %}
+<div class="section">
+    <div class="section-title">Objective</div>
+    <p style="font-size: 10.5pt;">{{ summary }}</p>
+</div>
+{% endif %}
+
+{% if experiences %}
+<div class="section">
+    <div class="section-title">Professional Experience</div>
+    {% for exp in experiences %}
+    <div class="entry">
+        <div style="display: flex; justify-content: space-between;">
+            <div>
+                <span class="entry-title">{{ exp.job_title }}</span>
+                <span style="font-style: italic;"> — {{ exp.company_name }}</span>
+            </div>
+            <div style="font-size: 10pt; white-space: nowrap;">{{ exp.date_range }}</div>
+        </div>
+        {% if exp.achievements %}
+        <div class="entry-description" style="font-size: 10pt;">
+            <ul>
+                {% for achievement in exp.achievements %}
+                <li>{{ achievement }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if education %}
+<div class="section">
+    <div class="section-title">Education</div>
+    {% for edu in education %}
+    <div class="entry">
+        <div style="display: flex; justify-content: space-between;">
+            <div>
+                <span class="entry-title">{{ edu.degree }}</span>
+                <span style="font-style: italic;"> — {{ edu.institution }}</span>
+            </div>
+            <div style="font-size: 10pt;">{{ edu.date_range }}</div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if certifications %}
+<div class="section">
+    <div class="section-title">Certifications</div>
+    {% for cert in certifications %}
+    <div class="entry" style="font-size: 10pt;">
+        <strong>{{ cert.name }}</strong> — {{ cert.issuer }} ({{ cert.issue_date }})
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends "resumes/base.html" %}
+{% block content %}
+    {{ header_html | safe }}
+
+    {% if summary %}
+    <div class="section">
+        <div class="section-title">Professional Summary</div>
+        <p class="entry-description">{{ summary }}</p>
+    </div>
+    {% endif %}
+
+    {% if skills %}
+    <div class="section">
+        <div class="section-title">Skills</div>
+        <div class="two-column">
+            {% for category, category_skills in skills.items() %}
+            <div class="column">
+                <div class="skill-category">
+                    <div class="skill-category-name">{{ category }}</div>
+                    <div class="skill-tags">
+                        {% for skill in category_skills %}
+                        <span class="skill-tag {% if skill.proficient %}proficient{% endif %}">{{ skill.name }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% if loop.index is even and not loop.last %}
+        </div>
+        <div class="two-column">
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if experiences %}
+    <div class="section">
+        <div class="section-title">Experience</div>
+        {% for exp in experiences %}
+        <div class="entry">
+            <div class="entry-header">
+                <div>
+                    <div class="entry-title">{{ exp.job_title }}</div>
+                    <div class="entry-org">{{ exp.company_name }}</div>
+                </div>
+                <div class="entry-date">{{ exp.date_range }}</div>
+            </div>
+            {% if exp.description %}
+            <div class="entry-description">{{ exp.description }}</div>
+            {% endif %}
+            {% if exp.achievements %}
+            <div class="entry-description">
+                <ul>
+                    {% for achievement in exp.achievements %}
+                    <li>{{ achievement }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if education %}
+    <div class="section">
+        <div class="section-title">Education</div>
+        {% for edu in education %}
+        <div class="entry">
+            <div class="entry-header">
+                <div>
+                    <div class="entry-title">{{ edu.degree or 'Education' }}</div>
+                    <div class="entry-org">{{ edu.institution }}</div>
+                </div>
+                <div class="entry-date">{{ edu.date_range }}</div>
+            </div>
+            {% if edu.description %}
+            <div class="entry-description">{{ edu.description }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if projects %}
+    <div class="section">
+        <div class="section-title">Projects</div>
+        {% for project in projects %}
+        <div class="entry">
+            <div class="entry-header">
+                <div class="entry-title">{{ project.name }}</div>
+                {% if project.date_range %}
+                <div class="entry-date">{{ project.date_range }}</div>
+                {% endif %}
+            </div>
+            {% if project.description %}
+            <div class="entry-description">{{ project.description }}</div>
+            {% endif %}
+            {% if project.technologies %}
+            <div class="entry-description">
+                <strong>Technologies:</strong> {{ project.technologies | join(', ') }}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if certifications %}
+    <div class="section">
+        <div class="section-title">Certifications</div>
+        {% for cert in certifications %}
+        <div class="entry">
+            <div class="entry-header">
+                <div class="entry-title">{{ cert.name }}</div>
+                <div class="entry-date">{{ cert.issue_date }}</div>
+            </div>
+            <div class="entry-org">{{ cert.issuer }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+{% endblock %}
