@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary-50: #eef2ff;
+  --color-primary-100: #e0e7ff;
+  --color-primary-200: #c7d2fe;
+  --color-primary-300: #a5b4fc;
+  --color-primary-400: #818cf8;
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f46e5;
+  --color-primary-700: #4338ca;
+  --color-primary-800: #3730a3;
+  --color-primary-900: #312e81;
+  --color-success-50: #f0fdf4;
+  --color-success-500: #22c55e;
+  --color-success-600: #16a34a;
+  --color-warning-50: #fffbeb;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+  --color-danger-50: #fef2f2;
+  --color-danger-500: #ef4444;
+  --color-danger-600: #dc2626;
+}
+
+body {
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Status badge colors */
+.status-draft { @apply bg-gray-100 text-gray-700; }
+.status-matched { @apply bg-blue-100 text-blue-700; }
+.status-resume_generated { @apply bg-indigo-100 text-indigo-700; }
+.status-cover_letter_generated { @apply bg-purple-100 text-purple-700; }
+.status-email_prepared { @apply bg-pink-100 text-pink-700; }
+.status-sent { @apply bg-cyan-100 text-cyan-700; }
+.status-delivered { @apply bg-teal-100 text-teal-700; }
+.status-opened { @apply bg-emerald-100 text-emerald-700; }
+.status-replied { @apply bg-green-100 text-green-700; }
+.status-interview_scheduled { @apply bg-lime-100 text-lime-700; }
+.status-offer_received { @apply bg-amber-100 text-amber-700; }
+.status-rejected { @apply bg-red-100 text-red-700; }
+.status-withdrawn { @apply bg-gray-200 text-gray-500; }
+
+/* Match score colors */
+.score-high { @apply text-green-600; }
+.score-medium { @apply text-yellow-600; }
+.score-low { @apply text-red-500; }
+
+/* Animation classes */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
