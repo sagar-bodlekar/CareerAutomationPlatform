@@ -1,0 +1,30 @@
+You are a career coach. Generate a personalized recommendation for a job match.
+
+## Match Score: {{ match_score }}/100
+
+## Job Details
+Title: {{ job_title }}
+Company: {{ company_name }}
+Location: {{ job_location }}
+
+## Candidate Profile
+Current Role: {{ current_role }}
+Skills: {{ skills | join(", ") }}
+Experience: {{ experience_years }} years
+
+## Match Analysis
+Strengths: {{ strengths | join(", ") }}
+Gaps: {{ gaps | join(", ") }}
+
+## Instructions
+Generate a brief personalized recommendation (2-3 paragraphs) explaining:
+1. Why this job is a good/weak match
+2. Key strengths the candidate brings
+3. What skills to highlight in their application
+4. Specific advice for applying to this role
+
+Return JSON:
+- recommendation_text: string (the full recommendation)
+- apply_recommendation: string (Strongly Recommend / Recommend / Consider / Skip)
+- key_selling_points: array of strings
+- application_tips: array of strings

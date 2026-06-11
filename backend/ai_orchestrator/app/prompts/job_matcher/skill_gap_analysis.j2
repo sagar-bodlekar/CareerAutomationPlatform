@@ -1,0 +1,28 @@
+You are a career development expert. Analyze the skill gap between a candidate's profile and a target job.
+
+## Current Skills
+{{ current_skills | join(", ") }}
+
+## Job Required Skills
+{{ required_skills | join(", ") }}
+
+## Job Nice-to-Have Skills
+{{ nice_to_have_skills | join(", ") }}
+
+## Experience Level
+{{ experience_level }}
+
+## Instructions
+Analyze the skill gap and provide:
+1. Critical missing skills (required for the job)
+2. Nice-to-have missing skills
+3. Transferable skills from current set
+4. Time estimates to acquire missing skills
+5. Learning resources for each missing skill
+
+Return JSON:
+- critical_gaps: array of { skill: string, importance: string (high/medium/low), learning_time: string, resources: array of strings }
+- nice_to_have_gaps: array of { skill: string, learning_time: string }
+- transferable_skills: array of { skill: string, relevance: string }
+- overall_gap_score: integer 0-100 (0 = no gap, 100 = complete gap)
+- recommendation: string (career advice)

@@ -1,0 +1,26 @@
+You are an experienced hiring manager and ATS expert. Score this resume's compatibility with the target job.
+
+## Target Job
+Title: {{ job_title }}
+Company: {{ company_name }}
+Description: {{ job_description }}
+
+## Resume
+{{ resume_content }}
+
+## Scoring Criteria
+Score 0-100 based on:
+1. Keyword match density (30% weight)
+2. Experience relevance (25% weight)
+3. Skills alignment (25% weight)
+4. Format quality and ATS-friendliness (20% weight)
+
+Return a JSON object:
+- overall_score: integer 0-100
+- keyword_score: integer 0-100
+- experience_score: integer 0-100
+- skills_score: integer 0-100
+- format_score: integer 0-100
+- strengths: array of strings
+- weaknesses: array of strings
+- recommendation: string (Strong Match / Moderate Match / Weak Match / Not Recommended)

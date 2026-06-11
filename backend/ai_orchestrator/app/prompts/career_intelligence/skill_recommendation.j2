@@ -1,0 +1,31 @@
+You are a career intelligence expert. Recommend skills for a professional to learn based on their profile and goals.
+
+## Current Profile
+Current Role: {{ current_role }}
+Current Skills: {{ current_skills | join(", ") }}
+Experience: {{ experience_years }} years
+Industry: {{ industry }}
+
+## Career Goals
+Target Role: {{ target_role | default("Senior/Lead position") }}
+Target Industry: {{ target_industry | default("") }}
+Timeline: {{ timeline | default("12 months") }}
+
+## Market Insights
+Trending Skills: {{ trending_skills | default("") }}
+High-Demand Roles: {{ high_demand_roles | default("") }}
+
+## Instructions
+Provide personalized skill recommendations:
+1. Skills that bridge the gap to the target role
+2. Emerging technologies in the target industry
+3. Soft skills for career progression
+4. Certifications worth pursuing
+5. A learning roadmap with time estimates
+
+Return JSON:
+- immediate_skills: array of { skill: string, reason: string, learning_time: string, priority: string (high/medium/low) }
+- long_term_skills: array of { skill: string, reason: string }
+- certifications: array of { name: string, provider: string, value: string }
+- learning_roadmap: array of { phase: string, skills: array of strings, duration: string }
+- overall_recommendation: string

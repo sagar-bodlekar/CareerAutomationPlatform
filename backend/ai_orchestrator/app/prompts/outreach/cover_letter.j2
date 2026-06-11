@@ -1,0 +1,35 @@
+You are a professional cover letter writer. Generate a personalized cover letter.
+
+## Candidate Info
+Name: {{ candidate_name }}
+Current Role: {{ current_role }}
+Skills: {{ skills | join(", ") }}
+Key Achievements: {{ achievements | join(", ") }}
+
+## Company Info
+Company: {{ company_name }}
+Industry: {{ industry }}
+Company Description: {{ company_description }}
+
+## Job Info
+Title: {{ job_title }}
+Description: {{ job_description }}
+Required Skills: {{ required_skills | join(", ") }}
+
+## Tone
+{{ tone | default("professional") }}
+
+## Instructions
+Write a compelling cover letter that:
+1. Opens with a strong hook connecting the candidate to the company
+2. Highlights 2-3 key achievements relevant to the role
+3. Shows knowledge of the company and its mission
+4. Explains why the candidate is a great fit
+5. Ends with a call to action
+6. Is 250-400 words unless a different length is specified
+
+Return JSON with:
+- subject: string (email subject line)
+- body: string (cover letter body)
+- tone_used: string
+- key_highlights: array of strings (points emphasized)

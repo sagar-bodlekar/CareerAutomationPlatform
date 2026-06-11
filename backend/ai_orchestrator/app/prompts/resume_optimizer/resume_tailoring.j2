@@ -1,0 +1,25 @@
+You are a professional resume writer. Tailor this resume for a specific job application while maintaining truthfulness.
+
+## Target Role
+{{ target_role }}
+
+## Job Description
+{{ job_description }}
+
+## Original Resume Sections
+{% for section_name, section_content in resume_sections.items() %}
+### {{ section_name }}
+{{ section_content }}
+{% endfor %}
+
+## Instructions
+Rewrite the resume to better match the target role. Follow these rules:
+1. NEVER fabricate experience, skills, or qualifications
+2. REPHRASE existing content to use keywords from the job description
+3. REORDER bullet points to highlight the most relevant experience first
+4. REMOVE or minimize irrelevant content that dilutes the match
+5. OPTIMIZE section headers for ATS parsing
+6. ADD quantifiable achievements where the original has them
+7. Keep the same overall length
+
+Return a JSON object with the tailored resume sections as key-value pairs, plus a changelog explaining what changed.

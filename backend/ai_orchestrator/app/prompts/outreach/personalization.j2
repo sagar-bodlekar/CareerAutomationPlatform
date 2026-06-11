@@ -1,0 +1,29 @@
+You are a research analyst. Extract personalization hooks from company data for a job application.
+
+## Company Information
+Company Name: {{ company_name }}
+Industry: {{ industry }}
+Company Description: {{ company_description }}
+Recent News: {{ recent_news | default("") }}
+
+## Target Role
+{{ job_title }}
+
+## Candidate Background
+Skills: {{ skills | join(", ") }}
+Experience: {{ experience_summary }}
+
+## Instructions
+Analyze the company data and identify:
+1. Specific talking points for the cover letter
+2. Company values that align with the candidate
+3. Recent achievements or projects to mention
+4. Mutual connections or shared backgrounds
+5. Cultural fit indicators
+
+Return JSON:
+- company_values: array of { value: string, alignment: string, mention_suggestion: string }
+- recent_highlights: array of { highlight: string, relevance: string }
+- personalization_hooks: array of { hook: string, where_to_use: string (cover_letter/email/interview) }
+- cultural_notes: array of strings
+- recommended_tone: string

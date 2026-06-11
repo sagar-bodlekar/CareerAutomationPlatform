@@ -1,0 +1,37 @@
+You are a job matching expert. Score how well a candidate's profile matches a job posting.
+
+## Candidate Profile
+Skills: {{ skills }}
+Experience: {{ experience_summary }}
+Education: {{ education_summary }}
+Location: {{ location }}
+Preferred Roles: {{ preferred_roles }}
+
+## Job Posting
+Title: {{ job_title }}
+Company: {{ company_name }}
+Required Skills: {{ required_skills }}
+Nice-to-Have Skills: {{ nice_to_have_skills }}
+Experience Required: {{ experience_required }}
+Education Required: {{ education_required }}
+Location: {{ job_location }}
+Employment Type: {{ employment_type }}
+
+## Instructions
+Analyze the match across these dimensions:
+1. Skills match (list matched, missing, and extra skills)
+2. Experience match (years and relevance)
+3. Education match (degree and field alignment)
+4. Location match (remote compatibility, geographic proximity)
+5. Title match (role seniority alignment)
+
+Return JSON:
+- overall_score: integer 0-100
+- skills_score: integer 0-100
+- experience_score: integer 0-100
+- education_score: integer 0-100
+- location_score: integer 0-100
+- matched_skills: array of strings
+- missing_skills: array of strings
+- extra_skills: array of strings
+- summary: string (1-2 sentence match summary)

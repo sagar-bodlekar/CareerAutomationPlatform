@@ -38,6 +38,12 @@ from resume_service.app.models import *  # noqa: F401, F403
 # Phase 5: Job Service
 from job_service.app.models import *  # noqa: F401, F403
 
+# Phase 6: Match Service
+from match_service.app.models import *  # noqa: F401, F403
+
+# Phase 6: AI Orchestrator
+from ai_orchestrator.app.models import *  # noqa: F401, F403
+
 target_metadata = Base.metadata
 
 

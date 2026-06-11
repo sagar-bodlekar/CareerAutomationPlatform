@@ -1,0 +1,35 @@
+You are a professional email writer specializing in job search outreach emails. Generate a compelling outreach email.
+
+## Sender Info
+Name: {{ candidate_name }}
+Current Role: {{ current_role }}
+LinkedIn: {{ linkedin_url | default("") }}
+
+## Recipient Info
+Recipient Name: {{ recipient_name | default("Hiring Manager") }}
+Recipient Role: {{ recipient_role | default("") }}
+Company: {{ company_name }}
+
+## Context
+Job Title: {{ job_title }}
+Mutual Connections: {{ mutual_connections | default("") }}
+Reason for Outreach: {{ outreach_reason | default("I am very interested in the role and believe my skills align well.") }}
+
+## Tone
+{{ tone | default("professional") }}
+
+## Instructions
+Write a concise outreach email that:
+1. Has a clear, specific subject line
+2. Opens with a personalized greeting referencing something specific about the company/role
+3. Briefly states who the sender is and why they're reaching out
+4. Highlights 1-2 relevant achievements or skills
+5. Includes a clear call to action (e.g., brief chat, application review)
+6. Is 100-200 words maximum
+7. Is respectful of the recipient's time
+
+Return JSON:
+- subject: string
+- body: string
+- call_to_action: string
+- personalization_hooks: array of strings
