@@ -286,6 +286,63 @@ services:
         condition: service_healthy
     logging: *default-logging
 
+  # ─── Tracking Service ─────────────────────────────────────────
+  tracking-api:
+    build:
+      context: ./backend/tracking_service
+      dockerfile: Dockerfile
+    container_name: career-tracking-api
+    restart: unless-stopped
+    ports:
+      - "8010:8010"
+    environment:
+      - APP_NAME=${APP_NAME:-Career Platform}
+      - APP_ENV=${APP_ENV:-development}
+      - APP_DEBUG=${APP_DEBUG:-true}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging: *default-logging
+
+  # ─── Notification Service ─────────────────────────────────────
+  notification-api:
+    build:
+      context: ./backend/notification_service
+      dockerfile: Dockerfile
+    container_name: career-notification-api
+    restart: unless-stopped
+    ports:
+      - "8011:8011"
+    environment:
+      - APP_NAME=${APP_NAME:-Career Platform}
+      - APP_ENV=${APP_ENV:-development}
+      - APP_DEBUG=${APP_DEBUG:-true}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging: *default-logging
+
+  # ─── Frontend (Phase 8) ───────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: career-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - nginx
+    logging: *default-logging
+
   # ─── Reverse Proxy / API Gateway ────────────────────────────
   nginx:
     image: nginx:alpine

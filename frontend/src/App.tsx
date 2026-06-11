@@ -14,6 +14,9 @@ import ResumeDetailPage from "./pages/ResumeDetailPage";
 import ResumeGeneratePage from "./pages/ResumeGeneratePage";
 import ApplicationsPage from "./pages/ApplicationsPage";
 import ApplicationDetailPage from "./pages/ApplicationDetailPage";
+import TrackingPage from "./pages/TrackingPage";
+import AnalyticsPage from "./pages/AnalyticsPage";
+import NotificationsPage from "./pages/NotificationsPage";
 
 export default function App() {
   return (
@@ -38,6 +41,9 @@ export default function App() {
         <Route path="/resumes/generate" element={<ResumeGeneratePage />} />
         <Route path="/applications" element={<ApplicationsPage />} />
         <Route path="/applications/:id" element={<ApplicationDetailPage />} />
+        <Route path="/tracking" element={<TrackingPage />} />
+        <Route path="/tracking/analytics" element={<AnalyticsPage />} />
+        <Route path="/tracking/notifications" element={<NotificationsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
