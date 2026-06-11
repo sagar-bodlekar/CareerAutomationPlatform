@@ -29,8 +29,11 @@ if config.config_file_name is not None:
 # Phase 2: Profile Service
 from profile_service.app.models import *  # noqa: F401, F403
 
-# Phase 3+: Auth Service
-# from auth_service.app.models import *  # noqa: F401, F403
+# Phase 3: Auth Service
+from auth_service.app.models import *  # noqa: F401, F403
+
+# Phase 4+: Resume Service
+# from resume_service.app.models import *  # noqa: F401, F403
 
 target_metadata = Base.metadata
 

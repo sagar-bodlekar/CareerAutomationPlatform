@@ -103,6 +103,28 @@ services:
       echo 'MinIO buckets created successfully';
       "
 
+  # ─── Auth Service ───────────────────────────────────────────
+  auth-api:
+    build:
+      context: ./backend/auth_service
+      dockerfile: Dockerfile
+    container_name: career-auth-api
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      - APP_NAME=${APP_NAME:-Career Platform}
+      - APP_ENV=${APP_ENV:-development}
+      - APP_DEBUG=${APP_DEBUG:-true}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging: *default-logging
+
   # ─── Profile Service ────────────────────────────────────────
   profile-api:
     build:
