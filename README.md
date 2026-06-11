@@ -29,6 +29,7 @@ Data Layer        → PostgreSQL · Redis · MinIO · Celery (Queue)
 - Python 3.12+
 - Node.js 20+ (for frontend, Phase 8+)
 - Google Gemini API key (free from [Google AI Studio](https://aistudio.google.com/), Phase 6+)
+- Groq API key (free from [Groq Console](https://console.groq.com/), optional fallback for AI)
 
 ### Setup
 

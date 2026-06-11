@@ -61,7 +61,7 @@ class AppConfig(BaseSettings):
     jwt_access_token_expire_minutes: int = 15
     jwt_refresh_token_expire_days: int = 7
 
-    # ─── AI / LLM (Google Gemini) ─────────────────────────────
+    # ─── AI / LLM (Google Gemini — Primary) ────────────────────
     gemini_api_key: Optional[str] = None
     gemini_default_model: str = "gemini-2.0-flash"
     gemini_pro_model: str = "gemini-1.5-pro"
@@ -75,6 +75,34 @@ class AppConfig(BaseSettings):
                 "Get your free API key at: https://aistudio.google.com/"
             )
         return self.gemini_api_key
+
+    # ─── AI / LLM (Groq — Secondary / Fallback) ────────────────
+    groq_api_key: Optional[str] = None
+    groq_default_model: str = "llama-3.3-70b-versatile"
+    groq_fallback_model: str = "mixtral-8x7b-32768"
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+
+    @property
+    def groq_api_key_required(self) -> str:
+        """Get Groq API key or raise clear error."""
+        if not self.groq_api_key:
+            raise ValueError(
+                "GROQ_API_KEY environment variable is required for Groq fallback. "
+                "Get your free API key at: https://console.groq.com/"
+            )
+        return self.groq_api_key
+
+    @property
+    def llm_fallback_chain(self) -> list[tuple[str, str]]:
+        """Fallback chain: Gemini primary → Groq secondary."""
+        chain = []
+        if self.gemini_api_key:
+            chain.append(("gemini", self.gemini_default_model))
+            chain.append(("gemini", self.gemini_pro_model))
+        if self.groq_api_key:
+            chain.append(("groq", self.groq_default_model))
+            chain.append(("groq", self.groq_fallback_model))
+        return chain
 
     # ─── Email ───────────────────────────────────────────────
     smtp_host: str = "localhost"

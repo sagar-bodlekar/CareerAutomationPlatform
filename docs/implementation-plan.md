@@ -123,7 +123,7 @@ Makefile
   - `postgres` (PostgreSQL 16, port 5432, volume for data persistence)
   - `redis` (Redis 7, port 6379)
   - `minio` (MinIO, ports 9000 (API) + 9001 (Console), volumes for data)
-  - *(No AI services in Docker — AI uses Google Gemini API)*
+  - *(No AI services in Docker — AI uses Gemini API (primary) + Groq API (fallback))*
   - `pgbouncer` (PgBouncer, port 5432, linked to postgres)
   - `nginx` (Nginx, port 80, reverse proxy config)
 - [ ] Create `docker/nginx/nginx.conf` with API gateway routing rules
@@ -882,7 +882,7 @@ backend/job_service/requirements.txt
 
 **Services Involved:** AI Orchestrator Service, Match Service
 
-**Dependencies:** Phase 2 (Profile), Phase 4 (Resume), Phase 5 (Job), Google Gemini API key
+**Dependencies:** Phase 2 (Profile), Phase 4 (Resume), Phase 5 (Job), Gemini + Groq API keys
 
 ---
 
@@ -896,6 +896,7 @@ backend/job_service/requirements.txt
 - [ ] Implement LLM provider:
   - `LLMProvider` (abstract base)
   - `GeminiProvider` — connects to Google Gemini API via `google-genai` SDK
+  - `GroqProvider` — connects to Groq API via OpenAI-compatible `openai` SDK (fallback)
 - [ ] Implement prompt template engine:
   - Load Jinja2 templates from `app/prompts/`
   - Inject variables (profile data, job description, company info)
@@ -905,13 +906,14 @@ backend/job_service/requirements.txt
   - Validate response against Pydantic schema
   - Retry on parse failure (up to 2 retries)
 - [ ] Implement execution logging (`ai_execution_logs` table)
-- [ ] Implement retry logic for Gemini API rate limits and transient errors
+- [ ] Implement retry logic and provider fallback chain (Gemini → Groq → error gracefully)
 
 **Files to create:**
 ```
 backend/ai_orchestrator/app/providers/__init__.py
 backend/ai_orchestrator/app/providers/base.py
 backend/ai_orchestrator/app/providers/gemini.py
+backend/ai_orchestrator/app/providers/groq.py
 backend/ai_orchestrator/app/services/__init__.py
 backend/ai_orchestrator/app/services/orchestrator.py
 backend/ai_orchestrator/app/services/prompt_engine.py
@@ -1065,7 +1067,7 @@ backend/ai_orchestrator/app/tasks.py
 - [ ] Write integration test: profile → job → match → score
 - [ ] Create Dockerfiles for both services
 - [ ] Add both to docker-compose.yml
-- [ ] Verify Gemini API key is valid and can generate responses
+- [ ] Verify both API keys are valid and fallback chain works
 
 **Files to create:**
 ```
@@ -1097,6 +1099,7 @@ backend/match_service/requirements.txt
 - [ ] AI-enhanced matching improves accuracy (manual spot-check)
 - [ ] `pytest tests/ -v` passes for both services
 - [ ] Gemini API responds: `python -c "from google import genai; client = genai.Client(); print(client.models.generate_content(model='gemini-2.0-flash', contents='Hello'))"`
+- [ ] Groq API responds: `python -c "from openai import OpenAI; client = OpenAI(base_url='https://api.groq.com/openai/v1'); print(client.chat.completions.create(model='llama-3.3-70b-versatile', messages=[{'role':'user','content':'Hello'}]).choices[0].message.content)"`
 
 ---
 
@@ -1682,7 +1685,7 @@ backend/shared/middleware/compression.py   (Response compression)
   - Include cURL examples for each endpoint
   - Include request/response body examples
 - [ ] Create `docs/setup.md`:
-  - Prerequisites (Docker, Python 3.12+, Node 20+, Gemini API key)
+  - Prerequisites (Docker, Python 3.12+, Node 20+, Gemini API key, Groq API key)
   - Step-by-step setup instructions
   - Environment configuration
   - Running tests
@@ -1774,8 +1777,11 @@ pip install -r requirements.txt         # Install deps
 
 # ─── AI ─────────────────────────────────────────────────
 pip install google-genai                # Install Gemini SDK
-export GEMINI_API_KEY="your-key-here"  # Set API key
+pip install openai                       # Install OpenAI SDK (for Groq)
+export GEMINI_API_KEY="your-key-here"  # Set Gemini API key
+export GROQ_API_KEY="your-key-here"    # Set Groq API key
 python -c "from google import genai; client = genai.Client(); print(client.models.generate_content(model='gemini-2.0-flash', contents='Hello'))"  # Test Gemini
+python -c "from openai import OpenAI; client = OpenAI(base_url='https://api.groq.com/openai/v1'); print(client.chat.completions.create(model='llama-3.3-70b-versatile', messages=[{'role':'user','content':'Hello'}]).choices[0].message.content)"  # Test Groq
 
 # ─── Service Scaffolding ────────────────────────────────
 bash backend/scripts/create_service.sh my_service  # Create new service

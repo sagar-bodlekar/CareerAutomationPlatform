@@ -1,9 +1,9 @@
 # AI Career Automation Platform — Architecture Document
 
-> **Version:** 1.2  
+> **Version:** 1.3  
 > **Status:** Draft  
 > **Last Updated:** June 11, 2026  
-> **License Commitment:** All core infrastructure is free and open-source. AI uses Google Gemini API (generous free tier available; no required subscriptions).
+> **License Commitment:** All core infrastructure is free and open-source. AI uses Google Gemini API (primary) with Groq API (fallback) — both have generous free tiers; no required subscriptions.
 
 ---
 
@@ -389,10 +389,10 @@ Draft
 **AI Agent Registry:**
 | Agent | Model | Tasks |
 |-------|-------|-------|
-| Resume Optimizer | Gemini API (gemini-2.0-flash / gemini-1.5-pro) | ATS optimization, keyword extraction, resume tailoring |
-| Job Match Engine | Gemini API (gemini-2.0-flash / gemini-1.5-pro) | Match scoring, skill gap detection |
-| Outreach Agent | Gemini API (gemini-2.0-flash / gemini-1.5-pro) | Cover letter, email, personalization |
-| Career Intelligence | Gemini API (gemini-2.0-flash / gemini-1.5-pro) | Career recommendations, skill suggestions, interview prep |
+| Resume Optimizer | Gemini API (primary) → Groq API (fallback) | ATS optimization, keyword extraction, resume tailoring |
+| Job Match Engine | Gemini API (primary) → Groq API (fallback) | Match scoring, skill gap detection |
+| Outreach Agent | Gemini API (primary) → Groq API (fallback) | Cover letter, email, personalization |
+| Career Intelligence | Gemini API (primary) → Groq API (fallback) | Career recommendations, skill suggestions, interview prep |
 
 **Key Endpoints:**
 | Method | Path | Description |
@@ -965,14 +965,27 @@ class LLMProvider(ABC):
     def complete(self, prompt: str, model: str, **kwargs) -> LLMResponse: ...
 
 class GeminiProvider(LLMProvider): ...      # Google Gemini API via google-genai SDK
+class GroqProvider(LLMProvider): ...        # Groq API via openai-compatible SDK
 
-# Provider configuration — Gemini as primary provider
+# Provider configuration — Gemini primary, Groq fallback
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_DEFAULT_MODEL = "gemini-2.0-flash"   # Fast, cost-effective for most tasks
 GEMINI_PRO_MODEL = "gemini-1.5-pro"          # Heavy reasoning tasks
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_DEFAULT_MODEL = "llama-3.3-70b-versatile"  # Fast inference via LPU
+GROQ_FALLBACK_MODEL = "mixtral-8x7b-32768"       # Larger context window
+
+# Fallback chain: Gemini → Groq (tried in order of availability)
+PROVIDER_FALLBACK_CHAIN = [
+    ("gemini", GEMINI_DEFAULT_MODEL),        # Primary
+    ("gemini", GEMINI_PRO_MODEL),            # Heavy reasoning
+    ("groq", GROQ_DEFAULT_MODEL),            # Fast fallback
+    ("groq", GROQ_FALLBACK_MODEL),           # Larger context
+]
 ```
 
-> **Note:** Gemini API requires a free API key from [Google AI Studio](https://aistudio.google.com/). The free tier includes generous rate limits suitable for development and personal use. Upgrade to pay-as-you-go for higher production limits.
+> **Note:** Both APIs have generous free tiers. Get keys from [Google AI Studio](https://aistudio.google.com/) and [Groq Console](https://console.groq.com/). The fallback chain ensures AI features work even if one provider is unavailable or rate-limited.
 
 ### 8.4 Structured Output Parsing
 
@@ -1018,6 +1031,8 @@ class MatchScoreResult(BaseModel):
 |------------|---------|---------|
 | **Google Gemini API** | Primary LLM provider (gemini-2.0-flash, gemini-1.5-pro) via google-genai SDK | Free tier available / Pay-as-you-go |
 | **google-genai** | Official Google GenAI Python SDK for Gemini API access | Apache 2.0 |
+| **Groq API** | Fallback LLM provider (llama-3.3-70b, mixtral-8x7b) via OpenAI-compatible API | Free tier available / Pay-as-you-go |
+| **openai** | OpenAI-compatible Python SDK (used for Groq API access) | MIT |
 | **LangChain / LlamaIndex** | Prompt management, chain building (optional, evaluate) | MIT |
 | **Sentence-Transformers** | Embedding generation for semantic matching | Apache 2.0 |
 | **Qdrant** | Vector database for semantic job search (future) — self-hosted | Apache 2.0 |
@@ -1081,7 +1096,7 @@ All technologies in the stack are free and open-source. None require paid subscr
 |----------|-------------|--------------|
 | **Backend Runtime** | Python 3.12+, FastAPI, SQLAlchemy, Celery, Pydantic | PSF / MIT / Apache 2.0 |
 | **Databases** | PostgreSQL, Redis, SQLite (dev), Qdrant | PostgreSQL / BSD-3-Clause / Apache 2.0 |
-| **AI / ML** | Google Gemini API, google-genai SDK, Sentence-Transformers | Apache 2.0 / Free tier |
+| **AI / ML** | Google Gemini API, google-genai SDK, Groq API, openai SDK, Sentence-Transformers | Apache 2.0 / MIT / Free tier |
 | **Storage** | MinIO (S3-compatible), Local Filesystem | AGPLv3 / None |
 | **Frontend** | React, TypeScript, Tailwind CSS, Vite | MIT |
 | **Infrastructure** | Docker, Nginx, Traefik, Prometheus, Grafana, Loki | Apache 2.0 / MIT / AGPLv3 |
@@ -1109,7 +1124,7 @@ Environment variables are managed per-environment using a layered strategy:
 - Encryption keys (for PII)
 - Optional OAuth2 client IDs (Gmail, Outlook, LinkedIn)
 
-> **Note:** AI inference uses Google Gemini API (free tier available). Email can be delivered entirely via self-hosted SMTP/Postal.
+> **Note:** AI inference uses Google Gemini API (primary) with Groq API (fallback). Both have generous free tiers. Email can be delivered entirely via self-hosted SMTP/Postal.
 
 ---
 
@@ -1488,12 +1503,12 @@ User Login → Auth Service validates credentials
 - **HTTPS Only:** TLS 1.3 for all external communication
 - **Email Credentials:** Stored encrypted, injected via environment variables
 - **LLM Model Paths:** Model paths stored in environment configuration, never hardcoded
-- **External AI Provider:** AI inference uses Google Gemini API — requires a Gemini API key (free tier available from Google AI Studio)
+- **External AI Providers:** AI inference uses Google Gemini API (primary) with Groq API (fallback). — requires API keys for both (free tiers available from Google AI Studio and Groq Console)
 
 ### 14.3 API Security
 
 - **Rate Limiting:** Per-user and per-IP rate limiting (Redis-backed sliding window)
-- **AI API Rate Limits:** AI Orchestrator implements concurrency limits and request queuing to respect Gemini API rate limits and prevent quota exhaustion
+- **AI API Rate Limits:** AI Orchestrator implements concurrency limits, request queuing, and provider fallback to handle rate limits from either provider
 - **CORS:** Restricted to known origins
 - **Input Validation:** Pydantic schema validation on all endpoints
 - **SQL Injection Protection:** SQLAlchemy parameterized queries
@@ -1681,7 +1696,7 @@ services:
 | REST vs GraphQL | REST (initially) | Simpler, cacheable, universal client support |
 | SQL vs NoSQL for profile | PostgreSQL | Strong schema, relations, JSONB for flexibility |
 | File storage | MinIO | S3-compatible, fully self-hosted, no AWS dependency |
-| LLM provider choice | Google Gemini API | Google's foundation models — fast, cost-effective, generous free tier; google-genai SDK for easy integration |
+| LLM provider choice | Gemini API (primary) + Groq API (fallback) | Gemini for primary inference; Groq (Llama/Mixtral on LPU) as fast fallback — both generous free tiers |
 
 ### B. Error Handling Strategy
 

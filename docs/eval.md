@@ -65,7 +65,7 @@ Each phase has evaluation criteria organized into categories:
 | EV-003 | Redis responds to `redis-cli -h localhost ping` with `PONG` | Critical | ✅ PASS / ❌ FAIL | |
 | EV-004 | MinIO console accessible at `http://localhost:9001` | Critical | ✅ PASS / ❌ FAIL | |
 | EV-005 | MinIO API accessible at `http://localhost:9000` | Critical | ✅ PASS / ❌ FAIL | |
-| EV-006 | Google Gemini API key is set and `pip list | grep google-genai` shows installed | Medium | ✅ PASS / ❌ FAIL | |
+| EV-006 | At least one of `GEMINI_API_KEY` or `GROQ_API_KEY` is set, and both SDKs (`google-genai`, `openai`) are installed | Medium | ✅ PASS / ❌ FAIL | |
 | EV-007 | All Docker volumes persist data across container restarts | Medium | ✅ PASS / ❌ FAIL | |
 | EV-008 | Nginx reverse proxy routes `/api/v1/*` to backend services (placeholder) | Medium | ✅ PASS / ❌ FAIL | |
 
@@ -336,7 +336,10 @@ Each phase has evaluation criteria organized into categories:
 | EV-129 | `POST /api/v1/ai/execute` with valid agent + params returns structured result | Critical | ✅ PASS / ❌ FAIL | |
 | EV-130 | AI agent result passes Pydantic schema validation | Critical | ✅ PASS / ❌ FAIL | |
 | EV-131 | Gemini provider connects and gets response from Gemini API | Critical | ✅ PASS / ❌ FAIL | |
-| EV-132 | Gemini API returns structured JSON when `response_mime_type=application/json` is set | High | ✅ PASS / ❌ FAIL | |
+| EV-132 | API returns structured JSON when `response_mime_type=application/json` is set | High | ✅ PASS / ❌ FAIL | |
+| EV-132a | Groq provider connects and gets response from Groq API via openai SDK | Critical | ✅ PASS / ❌ FAIL | |
+| EV-132b | Fallback chain: disable Gemini → AI request auto-fails over to Groq → returns result | Critical | ✅ PASS / ❌ FAIL | |
+| EV-132c | Both providers fail → returns 503 with clear error mentioning both providers | High | ✅ PASS / ❌ FAIL | |
 | EV-133 | Execution is logged to `ai_execution_logs` table with token count and duration | High | ✅ PASS / ❌ FAIL | |
 | EV-134 | Malformed LLM response triggers retry (up to 2 attempts) | High | ✅ PASS / ❌ FAIL | |
 | EV-135 | All retries exhausted returns 503 with clear error | Medium | ✅ PASS / ❌ FAIL | |
@@ -591,7 +594,7 @@ These tests validate that multiple phases work together correctly. Run these aft
 | IT-004 | **Auth → Protected resources** | P3, P2 | Register → Get token → Access profile → Expire token → Get 401 → Refresh → Access profile again | Auth flow works end-to-end |
 | IT-005 | **Application pipeline E2E** | P4, P6, P7, P9 | Create draft → Generate resume → Optimize → Generate cover letter → Submit → Track delivery | Pipeline completes all state transitions correctly |
 | IT-006 | **Full frontend flow** | P8 + All backend | Open app → Login → Browse jobs → Generate resume → Submit application → View tracking | UI renders correctly at each step |
-| IT-007 | **Gemini API error recovery** | P6, P7 | Set invalid API key → Submit AI request → Verify detailed error message → Set valid key → Verify normal operation | System reports clear error and recovers when key is fixed |
+| IT-007 | **Provider fallback recovery** | P6, P7 | Set invalid Gemini key → Submit AI request → Verify fallback to Groq → Set valid Gemini key → Verify Gemini resumes as primary | System auto-fails over to Groq and recovers to Gemini when available |
 | IT-008 | **Race condition: duplicate submit** | P7, P9 | Submit application twice rapidly → Verify only one application created | Second submit returns existing application |
 | IT-009 | **Data export** | P2, P9 | Create profile → Submit 5 applications → Export CSV → Export profile JSON | Exports contain all data correctly |
 | IT-010 | **Concurrent match + scrape** | P5, P6 | Trigger job scrape while batch match is running → Verify no deadlocks | Both operations complete without errors |
@@ -643,8 +646,8 @@ Quality gates are hard requirements that the entire project must pass before any
 ---
 
 > **Document Version:** 1.1  
-> **Total Evaluation Criteria:** 255  
-> **Critical:** 55 | **High:** 53 | **Medium:** 84 | **Low:** 27  
+> **Total Evaluation Criteria:** 258  
+> **Critical:** 57 | **High:** 54 | **Medium:** 84 | **Low:** 27  
 > **Quality Gates:** 18  
 > **Integration Tests:** 10  
 > **Last Updated:** June 11, 2026

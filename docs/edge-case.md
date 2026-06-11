@@ -277,19 +277,21 @@
 
 | # | Edge Case | Expected Behavior | Severity |
 |---|-----------|-------------------|----------|
-| EC-128 | Gemini API service is unreachable (network error) | Retry 3 times with exponential backoff; if all fail, return 503 with "AI service temporarily unavailable" | Critical |
-| EC-128b | Gemini API quota exhausted (daily or per-minute limit hit) | Log quota error, return 429 with Retry-After header; queue subsequent requests | High |
-| EC-128c | Gemini API key is invalid or revoked | Return 401 with "Invalid API key. Check your GEMINI_API_KEY environment variable." | Critical |
-| EC-129 | Gemini API returns 429 (rate limited) | Implement client-side rate limiting with exponential backoff; queue requests up to 1 min | High |
-| EC-130 | LLM response is empty (model returns no output) | Retry with simpler prompt; on 2nd failure, return fallback result | Medium |
-| EC-131 | LLM response is malformed JSON | Parse retry with stricter prompt; on 2nd failure, return error | High |
+| EC-128 | Gemini API service is unreachable (network error) | Retry 3 times with exponential backoff; if all fail, fall back to Groq; if Groq also fails, return 503 | Critical |
+| EC-128b | Primary provider (Gemini) quota exhausted | Auto-failover to Groq for subsequent requests; re-check Gemini availability periodically | High |
+| EC-128c | Gemini API key is invalid or revoked | Return 401 with "Invalid Gemini API key. Check your GEMINI_API_KEY environment variable. Falling back to Groq." | Critical |
+| EC-129 | Both providers return 429 (both rate limited) | Queue requests with exponential backoff; retry both providers in round-robin | High |
+| EC-130 | LLM response is empty (model returns no output) | Retry with simpler prompt; on 2nd failure, try other provider | Medium |
+| EC-131 | LLM response is malformed JSON | Parse retry with stricter prompt; on 2nd failure, try other provider | High |
 | EC-132 | LLM response is valid JSON but doesn't match expected schema | Validate against Pydantic schema; if invalid, retry with schema included in prompt | Medium |
-| EC-133 | LLM response is valid but nonsensical (e.g., garbage text) | Hallucination detection: check for coherence; if suspicious, retry | Medium |
+| EC-133 | LLM response is valid but nonsensical (e.g., garbage text) | Hallucination detection: check for coherence; if suspicious, retry with other provider | Medium |
 | EC-134 | Model returns toxic or biased content | Content filtering pass before returning to user; flag for review | High |
-| EC-135 | Prompt is too long (exceeds context window) | Summarize/trim sections; prioritize job description and latest experience | High |
-| EC-136 | Model takes >30 seconds to generate response | Hard timeout; retry once with simpler prompt, then return error | Medium |
-| EC-137 | Gemini API returns a server error (5xx) | Retry up to 3 times with backoff; if persistent, return 503 | High |
-| EC-138 | AI cost tracking | Track token counts and compute cost at Gemini API pricing rates; log for monitoring | Low |
+| EC-135 | Prompt is too long (exceeds context window) | Summarize/trim sections; prioritize job description and latest experience; try provider with larger context (Groq Mixtral has 32K) | High |
+| EC-136 | Model takes >30 seconds to generate response | Hard timeout; retry with other provider which may be faster | Medium |
+| EC-137 | Provider returns server error (5xx) | Retry up to 3 times with backoff; if persistent, try other provider | High |
+| EC-138 | AI cost tracking | Track per-provider token counts and compute costs at respective pricing rates; log for monitoring | Low |
+| EC-138b | Groq API key is invalid or revoked | Fall back to Gemini only; log warning about Groq being unavailable | High |
+| EC-138c | Groq becomes unavailable during fallback (Gemini was rate-limited, chain moved to Groq, then Groq fails) | Fall back to Gemini Pro model; if all providers exhausted, return 503 | Medium |
 
 ### 7.2 Prompt Templates
 
@@ -521,9 +523,9 @@ This section documents all known race conditions and their mitigation strategies
 ---
 
 > **Document Version:** 1.1  
-> **Total Edge Cases Documented:** 243  
+> **Total Edge Cases Documented:** 246  
 > **Critical Severity:** 33  
-> **High Severity:** 52  
-> **Medium Severity:** 91  
+> **High Severity:** 53  
+> **Medium Severity:** 93  
 > **Low Severity:** 67  
 > **Last Updated:** June 11, 2026
