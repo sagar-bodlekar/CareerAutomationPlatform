@@ -61,11 +61,20 @@ class AppConfig(BaseSettings):
     jwt_access_token_expire_minutes: int = 15
     jwt_refresh_token_expire_days: int = 7
 
-    # ─── AI / LLM ────────────────────────────────────────────
-    ollama_base_url: str = "http://localhost:11434"
-    ollama_default_model: str = "llama3.2:8b"
-    localai_base_url: str = "http://localhost:8080"
-    localai_default_model: str = "llama-3.2-8b-instruct"
+    # ─── AI / LLM (Google Gemini) ─────────────────────────────
+    gemini_api_key: Optional[str] = None
+    gemini_default_model: str = "gemini-2.0-flash"
+    gemini_pro_model: str = "gemini-1.5-pro"
+
+    @property
+    def gemini_api_key_required(self) -> str:
+        """Get Gemini API key or raise clear error."""
+        if not self.gemini_api_key:
+            raise ValueError(
+                "GEMINI_API_KEY environment variable is required for AI features. "
+                "Get your free API key at: https://aistudio.google.com/"
+            )
+        return self.gemini_api_key
 
     # ─── Email ───────────────────────────────────────────────
     smtp_host: str = "localhost"

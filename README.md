@@ -28,7 +28,7 @@ Data Layer        → PostgreSQL · Redis · MinIO · Celery (Queue)
 - Docker & Docker Compose
 - Python 3.12+
 - Node.js 20+ (for frontend, Phase 8+)
-- Ollama (for local AI, Phase 6+)
+- Google Gemini API key (free from [Google AI Studio](https://aistudio.google.com/), Phase 6+)
 
 ### Setup
 

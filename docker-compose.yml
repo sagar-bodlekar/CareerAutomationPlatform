@@ -103,49 +103,6 @@ services:
       echo 'MinIO buckets created successfully';
       "
 
-  # ─── AI (Self-hosted LLMs) ──────────────────────────────────
-  ollama:
-    image: ollama/ollama:latest
-    container_name: career-ollama
-    restart: unless-stopped
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama-models:/root/.ollama
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    logging: *default-logging
-    profiles:
-      - ai       # Only start with: docker compose --profile ai up
-
-  localai:
-    image: quay.io/go-skynet/local-ai:latest
-    container_name: career-localai
-    restart: unless-stopped
-    ports:
-      - "8080:8080"
-    volumes:
-      - localai-models:/models
-    environment:
-      THREADS: 4
-      CONTEXT_SIZE: 2048
-      DEBUG: false
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    logging: *default-logging
-    profiles:
-      - ai       # Only start with: docker compose --profile ai up
-
   # ─── Reverse Proxy / API Gateway ────────────────────────────
   nginx:
     image: nginx:alpine
@@ -164,5 +121,3 @@ volumes:
   postgres-data:
   redis-data:
   minio-data:
-  ollama-models:
-  localai-models:

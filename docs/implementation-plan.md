@@ -123,13 +123,12 @@ Makefile
   - `postgres` (PostgreSQL 16, port 5432, volume for data persistence)
   - `redis` (Redis 7, port 6379)
   - `minio` (MinIO, ports 9000 (API) + 9001 (Console), volumes for data)
-  - `ollama` (Ollama, port 11434, volume for model storage) — *optional, can install natively*
-  - `localai` (LocalAI, port 8080, volume for models) — *optional, can install natively*
+  - *(No AI services in Docker — AI uses Google Gemini API)*
   - `pgbouncer` (PgBouncer, port 5432, linked to postgres)
   - `nginx` (Nginx, port 80, reverse proxy config)
 - [ ] Create `docker/nginx/nginx.conf` with API gateway routing rules
 - [ ] Create `docker/postgres/init.sql` with initial database creation
-- [ ] Create `docker/ollama/pull-models.sh` to pre-pull recommended models (llama3.2:8b, mistral-small)
+- [ ] *(No local AI setup needed — Gemini API used in Phase 6)*
 - [ ] Verify: `docker compose up postgres redis minio -d` launches without errors
 - [ ] Verify: Can connect to PostgreSQL via `psql`
 - [ ] Verify: Can access MinIO console at `http://localhost:9001`
@@ -140,8 +139,6 @@ Makefile
 docker-compose.yml
 docker/nginx/nginx.conf
 docker/postgres/init.sql
-docker/ollama/pull-models.sh
-docker/ollama/Dockerfile
 ```
 
 ---
@@ -885,7 +882,7 @@ backend/job_service/requirements.txt
 
 **Services Involved:** AI Orchestrator Service, Match Service
 
-**Dependencies:** Phase 2 (Profile), Phase 4 (Resume), Phase 5 (Job), Ollama installed
+**Dependencies:** Phase 2 (Profile), Phase 4 (Resume), Phase 5 (Job), Google Gemini API key
 
 ---
 
@@ -896,10 +893,9 @@ backend/job_service/requirements.txt
 **Tasks:**
 
 - [ ] Create `backend/ai_orchestrator/` from service template
-- [ ] Implement LLM provider abstraction:
+- [ ] Implement LLM provider:
   - `LLMProvider` (abstract base)
-  - `OllamaProvider` — connects to Ollama API at `http://ollama:11434/api/generate`
-  - `LocalAIProvider` — connects to LocalAI at `http://localai:8080/v1/completions`
+  - `GeminiProvider` — connects to Google Gemini API via `google-genai` SDK
 - [ ] Implement prompt template engine:
   - Load Jinja2 templates from `app/prompts/`
   - Inject variables (profile data, job description, company info)
@@ -909,14 +905,13 @@ backend/job_service/requirements.txt
   - Validate response against Pydantic schema
   - Retry on parse failure (up to 2 retries)
 - [ ] Implement execution logging (`ai_execution_logs` table)
-- [ ] Implement fallback chain (try Ollama → LocalAI → error gracefully)
+- [ ] Implement retry logic for Gemini API rate limits and transient errors
 
 **Files to create:**
 ```
 backend/ai_orchestrator/app/providers/__init__.py
 backend/ai_orchestrator/app/providers/base.py
-backend/ai_orchestrator/app/providers/ollama.py
-backend/ai_orchestrator/app/providers/localai.py
+backend/ai_orchestrator/app/providers/gemini.py
 backend/ai_orchestrator/app/services/__init__.py
 backend/ai_orchestrator/app/services/orchestrator.py
 backend/ai_orchestrator/app/services/prompt_engine.py
@@ -952,7 +947,7 @@ backend/ai_orchestrator/app/models/models.py   (ai_execution_logs)
 - [ ] Create prompt templates for Career Intelligence:
   - `career_intelligence/skill_recommendation.j2` — Suggest skills to learn
   - `career_intelligence/interview_questions.j2` — Generate interview prep questions
-- [ ] Test each prompt with Ollama locally to verify quality output
+- [ ] Test each prompt with Gemini API to verify quality output
 
 **Files to create:**
 ```
@@ -1070,7 +1065,7 @@ backend/ai_orchestrator/app/tasks.py
 - [ ] Write integration test: profile → job → match → score
 - [ ] Create Dockerfiles for both services
 - [ ] Add both to docker-compose.yml
-- [ ] Verify Ollama is running and can generate responses
+- [ ] Verify Gemini API key is valid and can generate responses
 
 **Files to create:**
 ```
@@ -1101,7 +1096,7 @@ backend/match_service/requirements.txt
 - [ ] Match scoring without AI (rules-based) produces reasonable scores
 - [ ] AI-enhanced matching improves accuracy (manual spot-check)
 - [ ] `pytest tests/ -v` passes for both services
-- [ ] Ollama responds: `curl http://localhost:11434/api/generate`
+- [ ] Gemini API responds: `python -c "from google import genai; client = genai.Client(); print(client.models.generate_content(model='gemini-2.0-flash', contents='Hello'))"`
 
 ---
 
@@ -1670,7 +1665,7 @@ docker/otel-collector/otel-config.yml
 backend/shared/utils/cache.py             (Redis caching decorators)
 backend/shared/middleware/rate_limit.py    (Rate limiting middleware)
 backend/shared/middleware/compression.py   (Response compression)
-scripts/warm_models.py                    (Ollama model pre-load)
+# (No model warm-up needed — Gemini API is fully managed)
 ```
 
 ---
@@ -1687,7 +1682,7 @@ scripts/warm_models.py                    (Ollama model pre-load)
   - Include cURL examples for each endpoint
   - Include request/response body examples
 - [ ] Create `docs/setup.md`:
-  - Prerequisites (Docker, Python 3.12+, Node 20+, Ollama)
+  - Prerequisites (Docker, Python 3.12+, Node 20+, Gemini API key)
   - Step-by-step setup instructions
   - Environment configuration
   - Running tests
@@ -1778,9 +1773,9 @@ cd frontend && npm run dev              # Run frontend
 pip install -r requirements.txt         # Install deps
 
 # ─── AI ─────────────────────────────────────────────────
-ollama pull llama3.2:8b                 # Pull model
-ollama run llama3.2:8b                  # Test model
-curl http://localhost:11434/api/generate -d '{"model":"llama3.2:8b","prompt":"Hello"}'
+pip install google-genai                # Install Gemini SDK
+export GEMINI_API_KEY="your-key-here"  # Set API key
+python -c "from google import genai; client = genai.Client(); print(client.models.generate_content(model='gemini-2.0-flash', contents='Hello'))"  # Test Gemini
 
 # ─── Service Scaffolding ────────────────────────────────
 bash backend/scripts/create_service.sh my_service  # Create new service

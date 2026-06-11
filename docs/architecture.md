@@ -1,9 +1,9 @@
 # AI Career Automation Platform — Architecture Document
 
-> **Version:** 1.1  
+> **Version:** 1.2  
 > **Status:** Draft  
 > **Last Updated:** June 11, 2026  
-> **License Commitment:** 100% free and open-source. All services are self-hosted with zero paid API dependencies.
+> **License Commitment:** All core infrastructure is free and open-source. AI uses Google Gemini API (generous free tier available; no required subscriptions).
 
 ---
 
@@ -389,10 +389,10 @@ Draft
 **AI Agent Registry:**
 | Agent | Model | Tasks |
 |-------|-------|-------|
-| Resume Optimizer | Ollama / LocalAI (Llama 3, Mistral, Qwen) | ATS optimization, keyword extraction, resume tailoring |
-| Job Match Engine | Ollama / LocalAI (Llama 3, Mistral, Qwen) | Match scoring, skill gap detection |
-| Outreach Agent | Ollama / LocalAI (Llama 3, Mistral, Qwen) | Cover letter, email, personalization |
-| Career Intelligence | Ollama / LocalAI (Llama 3, Mistral, Qwen) | Career recommendations, skill suggestions, interview prep |
+| Resume Optimizer | Gemini API (gemini-2.0-flash / gemini-1.5-pro) | ATS optimization, keyword extraction, resume tailoring |
+| Job Match Engine | Gemini API (gemini-2.0-flash / gemini-1.5-pro) | Match scoring, skill gap detection |
+| Outreach Agent | Gemini API (gemini-2.0-flash / gemini-1.5-pro) | Cover letter, email, personalization |
+| Career Intelligence | Gemini API (gemini-2.0-flash / gemini-1.5-pro) | Career recommendations, skill suggestions, interview prep |
 
 **Key Endpoints:**
 | Method | Path | Description |
@@ -959,24 +959,20 @@ ai/prompts/
 ### 8.3 LLM Provider Abstraction
 
 ```python
-# Abstract interface for LLM providers (all self-hosted, no paid APIs)
+# Abstract interface for LLM providers
 class LLMProvider(ABC):
     @abstractmethod
     def complete(self, prompt: str, model: str, **kwargs) -> LLMResponse: ...
 
-class OllamaProvider(LLMProvider): ...      # Runs models via Ollama CLI
-class LocalAIProvider(LLMProvider): ...     # OpenAI-compatible local API
+class GeminiProvider(LLMProvider): ...      # Google Gemini API via google-genai SDK
 
-# Fallback chain — all models run locally, zero API costs
-PROVIDER_FALLBACK_CHAIN = [
-    ("ollama", "llama-3-70b"),
-    ("ollama", "mistral-large"),
-    ("localai", "qwen-72b"),
-    ("ollama", "llama-3-8b"),               # Lightweight fallback for low-spec hardware
-]
+# Provider configuration — Gemini as primary provider
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_DEFAULT_MODEL = "gemini-2.0-flash"   # Fast, cost-effective for most tasks
+GEMINI_PRO_MODEL = "gemini-1.5-pro"          # Heavy reasoning tasks
 ```
 
-> **No paid LLM APIs.** All models run locally via Ollama or LocalAI. The only hardware requirement is a machine with sufficient RAM/VRAM for the target model size (8B models run on 8GB RAM; 70B models need 48GB+).
+> **Note:** Gemini API requires a free API key from [Google AI Studio](https://aistudio.google.com/). The free tier includes generous rate limits suitable for development and personal use. Upgrade to pay-as-you-go for higher production limits.
 
 ### 8.4 Structured Output Parsing
 
@@ -1020,9 +1016,8 @@ class MatchScoreResult(BaseModel):
 
 | Technology | Purpose | License |
 |------------|---------|---------|
-| **Ollama** | Primary self-hosted LLM runner (Llama 3, Mistral, Qwen, Gemma) | MIT |
-| **LocalAI** | OpenAI API-compatible drop-in replacement (fallback LLM provider) | MIT |
-| **Llama 3 / Mistral / Qwen / Gemma** | Open-weight models for resume optimization, job matching, outreach | Various permissive |
+| **Google Gemini API** | Primary LLM provider (gemini-2.0-flash, gemini-1.5-pro) via google-genai SDK | Free tier available / Pay-as-you-go |
+| **google-genai** | Official Google GenAI Python SDK for Gemini API access | Apache 2.0 |
 | **LangChain / LlamaIndex** | Prompt management, chain building (optional, evaluate) | MIT |
 | **Sentence-Transformers** | Embedding generation for semantic matching | Apache 2.0 |
 | **Qdrant** | Vector database for semantic job search (future) — self-hosted | Apache 2.0 |
@@ -1086,7 +1081,7 @@ All technologies in the stack are free and open-source. None require paid subscr
 |----------|-------------|--------------|
 | **Backend Runtime** | Python 3.12+, FastAPI, SQLAlchemy, Celery, Pydantic | PSF / MIT / Apache 2.0 |
 | **Databases** | PostgreSQL, Redis, SQLite (dev), Qdrant | PostgreSQL / BSD-3-Clause / Apache 2.0 |
-| **AI / ML** | Ollama, LocalAI, Llama, Mistral, Qwen, Sentence-Transformers | MIT / Apache 2.0 / Various permissive |
+| **AI / ML** | Google Gemini API, google-genai SDK, Sentence-Transformers | Apache 2.0 / Free tier |
 | **Storage** | MinIO (S3-compatible), Local Filesystem | AGPLv3 / None |
 | **Frontend** | React, TypeScript, Tailwind CSS, Vite | MIT |
 | **Infrastructure** | Docker, Nginx, Traefik, Prometheus, Grafana, Loki | Apache 2.0 / MIT / AGPLv3 |
@@ -1114,7 +1109,7 @@ Environment variables are managed per-environment using a layered strategy:
 - Encryption keys (for PII)
 - Optional OAuth2 client IDs (Gmail, Outlook, LinkedIn)
 
-> **Note:** No paid API keys are required. All AI runs locally via Ollama/LocalAI. Email can be delivered entirely via self-hosted SMTP/Postal.
+> **Note:** AI inference uses Google Gemini API (free tier available). Email can be delivered entirely via self-hosted SMTP/Postal.
 
 ---
 
@@ -1493,12 +1488,12 @@ User Login → Auth Service validates credentials
 - **HTTPS Only:** TLS 1.3 for all external communication
 - **Email Credentials:** Stored encrypted, injected via environment variables
 - **LLM Model Paths:** Model paths stored in environment configuration, never hardcoded
-- **No External API Dependencies:** All LLM inference runs locally via Ollama/LocalAI — no external API keys needed
+- **External AI Provider:** AI inference uses Google Gemini API — requires a Gemini API key (free tier available from Google AI Studio)
 
 ### 14.3 API Security
 
 - **Rate Limiting:** Per-user and per-IP rate limiting (Redis-backed sliding window)
-- **LLM Resource Limits:** AI Orchestrator implements concurrency limits to prevent GPU OOM errors and maintains per-model request queuing for Ollama/LocalAI
+- **AI API Rate Limits:** AI Orchestrator implements concurrency limits and request queuing to respect Gemini API rate limits and prevent quota exhaustion
 - **CORS:** Restricted to known origins
 - **Input Validation:** Pydantic schema validation on all endpoints
 - **SQL Injection Protection:** SQLAlchemy parameterized queries
@@ -1686,7 +1681,7 @@ services:
 | REST vs GraphQL | REST (initially) | Simpler, cacheable, universal client support |
 | SQL vs NoSQL for profile | PostgreSQL | Strong schema, relations, JSONB for flexibility |
 | File storage | MinIO | S3-compatible, fully self-hosted, no AWS dependency |
-| LLM provider choice | Ollama / LocalAI | Self-hosted, zero API cost, data privacy, no vendor lock-in |
+| LLM provider choice | Google Gemini API | Google's foundation models — fast, cost-effective, generous free tier; google-genai SDK for easy integration |
 
 ### B. Error Handling Strategy
 

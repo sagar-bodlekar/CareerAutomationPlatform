@@ -277,19 +277,19 @@
 
 | # | Edge Case | Expected Behavior | Severity |
 |---|-----------|-------------------|----------|
-| EC-128 | Ollama service is down | Fail over to LocalAI; if both down, return 503 with "AI service unavailable" | Critical |
-| EC-128b | Requested model not found in Ollama (never pulled or deleted) | Fall back to next available smaller model in chain; log warning with available models list | High |
-| EC-128c | Ollama is pulling a model (still downloading) when request arrives | Return 503 with "Model is loading, retry in {estimated_remaining}s" — client should retry | Medium |
-| EC-129 | Ollama returns 429 (too many requests) | Implement client-side rate limiting, queue requests, retry with backoff | High |
+| EC-128 | Gemini API service is unreachable (network error) | Retry 3 times with exponential backoff; if all fail, return 503 with "AI service temporarily unavailable" | Critical |
+| EC-128b | Gemini API quota exhausted (daily or per-minute limit hit) | Log quota error, return 429 with Retry-After header; queue subsequent requests | High |
+| EC-128c | Gemini API key is invalid or revoked | Return 401 with "Invalid API key. Check your GEMINI_API_KEY environment variable." | Critical |
+| EC-129 | Gemini API returns 429 (rate limited) | Implement client-side rate limiting with exponential backoff; queue requests up to 1 min | High |
 | EC-130 | LLM response is empty (model returns no output) | Retry with simpler prompt; on 2nd failure, return fallback result | Medium |
 | EC-131 | LLM response is malformed JSON | Parse retry with stricter prompt; on 2nd failure, return error | High |
 | EC-132 | LLM response is valid JSON but doesn't match expected schema | Validate against Pydantic schema; if invalid, retry with schema included in prompt | Medium |
 | EC-133 | LLM response is valid but nonsensical (e.g., garbage text) | Hallucination detection: check for coherence; if suspicious, retry | Medium |
 | EC-134 | Model returns toxic or biased content | Content filtering pass before returning to user; flag for review | High |
 | EC-135 | Prompt is too long (exceeds context window) | Summarize/trim sections; prioritize job description and latest experience | High |
-| EC-136 | Model takes >120 seconds to generate response | Hard timeout; fall back to smaller model, if still slow, return error | High |
-| EC-137 | GPU OOM (out of memory) during generation | Catch OOM error, switch to smaller quantized model (8B → 3B) | Critical |
-| EC-138 | AI cost tracking | Since models run locally on Ollama, AI costs are $0. Track only token counts and duration | Low |
+| EC-136 | Model takes >30 seconds to generate response | Hard timeout; retry once with simpler prompt, then return error | Medium |
+| EC-137 | Gemini API returns a server error (5xx) | Retry up to 3 times with backoff; if persistent, return 503 | High |
+| EC-138 | AI cost tracking | Track token counts and compute cost at Gemini API pricing rates; log for monitoring | Low |
 
 ### 7.2 Prompt Templates
 
