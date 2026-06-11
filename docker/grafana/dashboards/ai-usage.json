@@ -1,0 +1,37 @@
+{
+  "__inputs": [],
+  "__requires": [],
+  "title": "AI Usage",
+  "uid": "ai-usage",
+  "version": 1,
+  "panels": [
+    {
+      "title": "Token Usage (tokens/min)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [{"expr": "rate(ai_token_usage_total[1m])", "legendFormat": "{{agent}}"}],
+      "datasource": "Prometheus"
+    },
+    {
+      "title": "AI Generation Time (p95)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "targets": [{"expr": "histogram_quantile(0.95, rate(ai_generation_duration_seconds_bucket[5m]))", "legendFormat": "{{agent}}"}],
+      "datasource": "Prometheus"
+    },
+    {
+      "title": "Requests by Agent",
+      "type": "bargauge",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "targets": [{"expr": "increase(ai_requests_total[1h])", "legendFormat": "{{agent}}"}],
+      "datasource": "Prometheus"
+    },
+    {
+      "title": "Provider Fallback Rate",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "targets": [{"expr": "rate(ai_provider_fallback_total[5m])", "legendFormat": "{{from}}->{{to}}"}],
+      "datasource": "Prometheus"
+    }
+  ]
+}

@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from shared.config import settings
 from shared.logging import get_logger, setup_logging
+from shared.middleware import setup_metrics
 
 from .api.router import api_router
 
@@ -26,6 +27,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(api_router, prefix="/api/v1")
+    setup_metrics(app, "ai-orchestrator")
 
     @app.on_event("startup")
     async def startup():

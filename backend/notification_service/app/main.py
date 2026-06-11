@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from shared.config import settings
 from shared.logging import get_logger, setup_logging
+from shared.middleware import setup_metrics
 
 from .services.notification_service import NotificationService
 from .services.websocket_service import manager
@@ -88,6 +89,7 @@ def create_app() -> FastAPI:
         except WebSocketDisconnect:
             await manager.disconnect(websocket, user_id)
 
+    setup_metrics(app, "notification")
     return app
 
 

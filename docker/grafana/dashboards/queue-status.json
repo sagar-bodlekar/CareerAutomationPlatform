@@ -1,0 +1,37 @@
+{
+  "__inputs": [],
+  "__requires": [],
+  "title": "Queue Status",
+  "uid": "queue-status",
+  "version": 1,
+  "panels": [
+    {
+      "title": "Queue Depth",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [{"expr": "celery_queue_depth", "legendFormat": "{{queue}}"}],
+      "datasource": "Prometheus"
+    },
+    {
+      "title": "Task Processing Rate (tasks/s)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "targets": [{"expr": "rate(celery_processed_tasks_total[5m])", "legendFormat": "{{queue}}"}],
+      "datasource": "Prometheus"
+    },
+    {
+      "title": "Failed Tasks Rate",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "targets": [{"expr": "rate(celery_failed_tasks_total[5m])", "legendFormat": "{{queue}}"}],
+      "datasource": "Prometheus"
+    },
+    {
+      "title": "Task Processing Time (p95)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "targets": [{"expr": "histogram_quantile(0.95, rate(celery_task_duration_seconds_bucket[5m]))", "legendFormat": "{{task}}"}],
+      "datasource": "Prometheus"
+    }
+  ]
+}

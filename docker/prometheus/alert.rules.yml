@@ -1,0 +1,86 @@
+# Alert Rules — AI Career Platform
+
+groups:
+  - name: service-health
+    interval: 30s
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.service }} is down"
+          description: "{{ $labels.instance }} has been unreachable for more than 1 minute."
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate on {{ $labels.service }}"
+          description: "Error rate is {{ humanizePercentage $value }} on {{ $labels.service }}."
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency on {{ $labels.service }}"
+          description: "P95 latency is {{ $value }}s on {{ $labels.service }}."
+
+  - name: queue-health
+    interval: 30s
+    rules:
+      - alert: QueueDepthHigh
+        expr: celery_queue_depth > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Queue depth high on {{ $labels.queue }}"
+          description: "Queue {{ $labels.queue }} has {{ $value }} messages pending."
+
+      - alert: QueueFailedJobs
+        expr: rate(celery_failed_tasks_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Jobs failing on queue {{ $labels.queue }}"
+          description: "Tasks are failing on queue {{ $labels.queue }}."
+
+  - name: ai-health
+    interval: 30s
+    rules:
+      - alert: AIHighTokenUsage
+        expr: rate(ai_token_usage_total[1h]) > 100000
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "High AI token usage"
+          description: "Token usage is {{ $value }} tokens/hour."
+
+      - alert: AIProviderFallback
+        expr: rate(ai_provider_fallback_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "AI provider fallback activated"
+          description: "Primary AI provider is unavailable, using fallback."
+
+  - name: business-kpis
+    interval: 1m
+    rules:
+      - alert: DeliveryFailureRate
+        expr: rate(application_delivery_failed_total[1h]) / rate(application_delivery_attempted_total[1h]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High delivery failure rate"
+          description: "{{ humanizePercentage $value }} of application deliveries are failing."

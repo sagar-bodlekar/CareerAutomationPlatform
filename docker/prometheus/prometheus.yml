@@ -1,0 +1,128 @@
+# Prometheus Configuration — AI Career Platform
+# Scrapes metrics from all microservices
+
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: "career-platform"
+    env:     "${APP_ENV:-development}"
+
+# Alerting configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+          # Add Alertmanager when deployed
+
+# Rule files
+rule_files:
+  - "alert.rules.yml"
+
+# Scrape configuration
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # ─── Profile Service ─────────────────────────────────────
+  - job_name: "profile-service"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["profile-api:8001"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: "profile"
+
+  # ─── Auth Service ────────────────────────────────────────
+  - job_name: "auth-service"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["auth-api:8002"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: "auth"
+
+  # ─── Resume Service ──────────────────────────────────────
+  - job_name: "resume-service"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["resume-api:8003"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: "resume"
+
+  # ─── Job Service ─────────────────────────────────────────
+  - job_name: "job-service"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["job-api:8004"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: "job"
+
+  # ─── Match Service ───────────────────────────────────────
+  - job_name: "match-service"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["match-api:8005"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: "match"
+
+  # ─── Outreach Service ────────────────────────────────────
+  - job_name: "outreach-service"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["outreach-api:8006"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: "outreach"
+
+  # ─── Application Service ─────────────────────────────────
+  - job_name: "application-service"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["application-api:8007"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: "application"
+
+  # ─── AI Orchestrator ─────────────────────────────────────
+  - job_name: "ai-orchestrator"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["ai-orchestrator:8009"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: "ai-orchestrator"
+
+  # ─── Tracking Service ────────────────────────────────────
+  - job_name: "tracking-service"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["tracking-api:8010"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: "tracking"
+
+  # ─── Notification Service ────────────────────────────────
+  - job_name: "notification-service"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["notification-api:8011"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: service
+        replacement: "notification"
+
+  # Infrastructure exporters (add when deploying corresponding exporter containers)

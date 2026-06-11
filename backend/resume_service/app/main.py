@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from shared.config import settings
 from shared.logging import get_logger, setup_logging
+from shared.middleware import setup_metrics
 
 from app.api.router import api_router
 
@@ -34,6 +35,7 @@ def create_app() -> FastAPI:
 
     # Include routers
     app.include_router(api_router, prefix="/api/v1")
+    setup_metrics(app, "resume")
 
     logger.info(
         "Resume Service started",
