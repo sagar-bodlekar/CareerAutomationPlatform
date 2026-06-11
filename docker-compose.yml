@@ -103,6 +103,28 @@ services:
       echo 'MinIO buckets created successfully';
       "
 
+  # ─── Profile Service ────────────────────────────────────────
+  profile-api:
+    build:
+      context: ./backend/profile_service
+      dockerfile: Dockerfile
+    container_name: career-profile-api
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      - APP_NAME=${APP_NAME:-Career Platform}
+      - APP_ENV=${APP_ENV:-development}
+      - APP_DEBUG=${APP_DEBUG:-true}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging: *default-logging
+
   # ─── Reverse Proxy / API Gateway ────────────────────────────
   nginx:
     image: nginx:alpine
