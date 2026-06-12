@@ -13,7 +13,6 @@ from sqlalchemy import (
     Column,
     Date,
     DateTime,
-    Enum,
     ForeignKey,
     Integer,
     String,
@@ -22,14 +21,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import relationship
-
-from app.models.enums import (
-    DatePrecision,
-    EmploymentType,
-    LocationType,
-    SkillProficiency,
-    SocialPlatform,
-)
 
 
 class UserProfile(Base):
@@ -45,7 +36,7 @@ class UserProfile(Base):
     location_city = Column(String(100))
     location_state = Column(String(100))
     location_country = Column(String(100))
-    location_type = Column(Enum(LocationType), default=LocationType.REMOTE)
+    location_type = Column(String(20), default="remote")
     preferred_roles = Column(ARRAY(String), default=list)
     target_salary_min = Column(Integer)
     target_salary_max = Column(Integer)
@@ -125,7 +116,7 @@ class Skill(Base):
     )
     name = Column(String(100), nullable=False)
     category = Column(String(100))  # e.g. "Programming Language", "Framework", "Tool"
-    proficiency = Column(Enum(SkillProficiency), default=SkillProficiency.INTERMEDIATE)
+    proficiency = Column(String(20), default="intermediate")
     years_used = Column(Integer, default=0)
     is_top_skill = Column(Boolean, default=False)
     order = Column(Integer, default=0)
@@ -149,13 +140,13 @@ class WorkExperience(Base):
     company_url = Column(String(500))
     company_logo_url = Column(String(500))
     job_title = Column(String(200), nullable=False)
-    employment_type = Column(Enum(EmploymentType), default=EmploymentType.FULL_TIME)
+    employment_type = Column(String(20), default="full_time")
     location = Column(String(200))
-    location_type = Column(Enum(LocationType))
+    location_type = Column(String(20))
     start_date = Column(Date, nullable=False)
-    start_date_precision = Column(Enum(DatePrecision), default=DatePrecision.MONTH)
+    start_date_precision = Column(String(10), default="month")
     end_date = Column(Date)
-    end_date_precision = Column(Enum(DatePrecision), default=DatePrecision.MONTH)
+    end_date_precision = Column(String(10), default="month")
     is_current = Column(Boolean, default=False)
     description = Column(Text)
     achievements = Column(ARRAY(String), default=list)
@@ -185,9 +176,9 @@ class Education(Base):
     field_of_study = Column(String(200))
     grade = Column(String(50))
     start_date = Column(Date, nullable=False)
-    start_date_precision = Column(Enum(DatePrecision), default=DatePrecision.YEAR)
+    start_date_precision = Column(String(10), default="year")
     end_date = Column(Date)
-    end_date_precision = Column(Enum(DatePrecision), default=DatePrecision.YEAR)
+    end_date_precision = Column(String(10), default="year")
     is_current = Column(Boolean, default=False)
     description = Column(Text)
     activities = Column(ARRAY(String), default=list)
@@ -214,9 +205,9 @@ class Project(Base):
     technologies = Column(ARRAY(String), default=list)
     role = Column(String(200))
     start_date = Column(Date)
-    start_date_precision = Column(Enum(DatePrecision), default=DatePrecision.MONTH)
+    start_date_precision = Column(String(10), default="month")
     end_date = Column(Date)
-    end_date_precision = Column(Enum(DatePrecision), default=DatePrecision.MONTH)
+    end_date_precision = Column(String(10), default="month")
     is_current = Column(Boolean, default=False)
     highlights = Column(ARRAY(String), default=list)
     order = Column(Integer, default=0)
@@ -261,7 +252,7 @@ class SocialLink(Base):
     profile_id = Column(
         UUID(as_uuid=True), ForeignKey("career.user_profiles.id"), nullable=False
     )
-    platform = Column(Enum(SocialPlatform), nullable=False)
+    platform = Column(String(50), nullable=False)
     url = Column(String(500), nullable=False)
     label = Column(String(100))
     is_primary = Column(Boolean, default=False)

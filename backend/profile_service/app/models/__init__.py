@@ -1,6 +1,6 @@
 """Profile Service SQLAlchemy models."""
 
-from app.models.models import (
+from .models import (
     Certification,
     Education,
     PersonalInfo,

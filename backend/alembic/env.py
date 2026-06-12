@@ -5,11 +5,12 @@ auto-detects SQLAlchemy models from the shared Base metadata.
 """
 
 import asyncio
+import sys
 from logging.config import fileConfig
+from pathlib import Path
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
-from sqlalchemy.ext.asyncio import AsyncEngine
+from sqlalchemy import pool
 
 from shared.config import settings
 from shared.database import Base
@@ -24,34 +25,59 @@ config.set_main_option("sqlalchemy.url", settings.database_url)
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# MetaData for autogenerate support
-# Import all models here so Alembic can detect them:
-# Phase 2: Profile Service
-from profile_service.app.models import *  # noqa: F401, F403
 
-# Phase 3: Auth Service
-from auth_service.app.models import *  # noqa: F401, F403
+def _load_service_models(service_name: str) -> None:
+    """Load SQLAlchemy models from a service's app.models.models module.
 
-# Phase 4: Resume Service
-from resume_service.app.models import *  # noqa: F401, F403
+    Each service defines models that inherit from shared Base. Importing the
+    module registers table metadata on Base.metadata so Alembic can detect
+    them.
 
-# Phase 5: Job Service
-from job_service.app.models import *  # noqa: F401, F403
+    Since each service has its own 'app' package (e.g. profile_service/app/),
+    we temporarily add the service directory to sys.path, import via the
+    canonical 'app.models.models' path, then clean up sys.path and remove
+    the cached 'app' modules to avoid conflicts with the next service.
+    """
+    import importlib
 
-# Phase 6: Match Service
-from match_service.app.models import *  # noqa: F401, F403
+    service_dir = str(Path(__file__).parent.parent / service_name)
+    models_init = Path(service_dir) / "app" / "models" / "models.py"
+    if not models_init.exists():
+        return
 
-# Phase 6: AI Orchestrator
-from ai_orchestrator.app.models import *  # noqa: F401, F403
+    # Clean any 'app' modules left from a previous service import
+    for key in list(sys.modules.keys()):
+        if key == "app" or key.startswith("app."):
+            del sys.modules[key]
 
-# Phase 7: Outreach Service
-from outreach_service.app.models import *  # noqa: F401, F403
+    # Temporarily add this service's directory so 'app' resolves here
+    sys.path.insert(0, service_dir)
+    try:
+        importlib.import_module("app.models.models")
+    finally:
+        sys.path.remove(service_dir)
 
-# Phase 7: Application Service
-from application_service.app.models import *  # noqa: F401, F403
+    # Clean up 'app' modules again so the next service gets its own 'app'
+    for key in list(sys.modules.keys()):
+        if key == "app" or key.startswith("app."):
+            del sys.modules[key]
 
-# Phase 9: Tracking Service
-from tracking_service.app.models import *  # noqa: F401, F403
+
+# MetaData for autogenerate support.
+# Load all service models so Alembic can detect their table definitions.
+_service_order = [
+    "profile_service",   # Phase 2
+    "auth_service",      # Phase 3
+    "resume_service",    # Phase 4
+    "job_service",       # Phase 5
+    "match_service",     # Phase 6
+    "ai_orchestrator",   # Phase 6
+    "outreach_service",  # Phase 7
+    "application_service",# Phase 7
+    "tracking_service",  # Phase 9
+]
+for svc in _service_order:
+    _load_service_models(svc)
 
 target_metadata = Base.metadata
 

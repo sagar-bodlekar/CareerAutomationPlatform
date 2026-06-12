@@ -29,6 +29,11 @@ from ..models.enums import (
 )
 
 
+def _enum_values(enum_cls):
+    """Return enum member values for SQLAlchemy Enum type."""
+    return [e.value for e in enum_cls]
+
+
 class Job(Base):
     """Normalized job posting from any source."""
 
@@ -55,7 +60,7 @@ class Job(Base):
 
     # ─── Location ───────────────────────────────────────────
     location = Column(String(255), nullable=True)
-    location_type = Column(Enum(LocationType, name="location_type", schema="career"), nullable=True)
+    location_type = Column(Enum(LocationType, name="location_type", schema="career", values_callable=_enum_values), nullable=True)
     is_remote = Column(Integer, default=0, comment="Boolean flag")
     remote_type = Column(String(50), nullable=True, comment="Fully remote, hybrid, onsite")
 
@@ -69,19 +74,19 @@ class Job(Base):
     # ─── Experience & Education ─────────────────────────────
     experience_min_years = Column(Integer, nullable=True)
     experience_max_years = Column(Integer, nullable=True)
-    experience_level = Column(Enum(ExperienceLevel, name="experience_level", schema="career"), nullable=True)
+    experience_level = Column(Enum(ExperienceLevel, name="experience_level", schema="career", values_callable=_enum_values), nullable=True)
     education_required = Column(String(255), nullable=True)
     degree_preferred = Column(String(255), nullable=True)
 
     # ─── Compensation ───────────────────────────────────────
     salary_min = Column(Float, nullable=True)
     salary_max = Column(Float, nullable=True)
-    salary_currency = Column(Enum(SalaryCurrency, name="salary_currency", schema="career"), nullable=True)
+    salary_currency = Column(Enum(SalaryCurrency, name="salary_currency", schema="career", values_callable=_enum_values), nullable=True)
     salary_period = Column(String(20), nullable=True, comment="yearly, monthly, hourly")
     salary_visible = Column(Integer, default=0, comment="Boolean flag")
 
     # ─── Employment ─────────────────────────────────────────
-    employment_type = Column(Enum(EmploymentType, name="employment_type", schema="career"), nullable=True)
+    employment_type = Column(Enum(EmploymentType, name="employment_type", schema="career", values_callable=_enum_values), nullable=True)
     industry = Column(String(100), nullable=True)
     function = Column(String(100), nullable=True)
     department = Column(String(100), nullable=True)
@@ -92,7 +97,7 @@ class Job(Base):
     application_deadline = Column(DateTime(timezone=True), nullable=True)
     posted_at = Column(DateTime(timezone=True), nullable=True)
     scraped_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    status = Column(Enum(JobStatus, name="job_status", schema="career"), default=JobStatus.ACTIVE, nullable=False)
+    status = Column(Enum(JobStatus, name="job_status", schema="career", values_callable=_enum_values), default=JobStatus.ACTIVE, nullable=False)
     raw_data = Column(JSONB, nullable=True, comment="Original scraped JSON for audit")
 
     # ─── Enrichment ─────────────────────────────────────────
@@ -114,7 +119,7 @@ class JobSource(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(100), nullable=False, unique=True, comment="Source name (e.g., remoteok, linkedin)")
-    source_type = Column(Enum(SourceType, name="source_type", schema="career"), nullable=False)
+    source_type = Column(Enum(SourceType, name="source_type", schema="career", values_callable=_enum_values), nullable=False)
     display_name = Column(String(255), nullable=False, comment="Human-readable name")
     base_url = Column(String(500), nullable=False, comment="Base URL for scraping")
     api_url = Column(String(500), nullable=True, comment="API endpoint if applicable")
