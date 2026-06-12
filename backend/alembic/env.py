@@ -18,7 +18,7 @@ from shared.database import Base
 config = context.config
 
 # Set the database URL from settings
-config.set_main_option("sqlalchemy.url", settings.db_url)
+config.set_main_option("sqlalchemy.url", settings.database_url)
 
 # Configure Python logging from alembic.ini
 if config.config_file_name is not None:
@@ -93,7 +93,7 @@ async def run_migrations_online() -> None:
     from sqlalchemy.ext.asyncio import create_async_engine
 
     connectable = create_async_engine(
-        settings.db_url,
+        settings.database_url,
         poolclass=pool.NullPool,
     )
 

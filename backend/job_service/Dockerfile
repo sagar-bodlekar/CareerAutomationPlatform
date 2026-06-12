@@ -1,24 +1,42 @@
-FROM python:3.12-slim
+FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
 # Install system dependencies for scraping (chromium, beautifulsoup, etc.)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
+    gcc \
+    libpq-dev \
     libxml2-dev \
     libxslt-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy shared package and service code
+# Copy shared library and install it first
 COPY shared/ /app/shared/
-COPY job_service/ /app/job_service/
-WORKDIR /app/job_service
+RUN pip install --no-cache-dir -e /app/shared/
 
-# Install service dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install service Python dependencies (filtering out editable paths that need project metadata)
+COPY job_service/requirements.txt .
+RUN grep -v "^-e" requirements.txt > /tmp/requirements-base.txt && \
+    pip install --no-cache-dir -r /tmp/requirements-base.txt
 
-# Expose port
+# Copy service code
+COPY job_service/app/ ./app/
+
+# Runtime stage
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq-dev \
+    libxml2-dev \
+    libxslt-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+COPY --from=builder /app /app
+
 EXPOSE 8004
 
-# Run with uvicorn
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8004"]

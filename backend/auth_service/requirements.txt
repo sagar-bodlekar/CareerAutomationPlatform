@@ -17,6 +17,7 @@ httpx>=0.27
 # Auth-specific
 python-jose[cryptography]>=3.3
 passlib[bcrypt]>=1.7
+bcrypt<4.1  # passlib compatibility (v4.1+ removed __about__)
 email-validator>=2.1
 
 # Testing

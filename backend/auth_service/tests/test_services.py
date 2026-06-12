@@ -1,14 +1,11 @@
-"""Unit tests for service template services."""
+"""Unit tests for auth service."""
 
 import pytest
 
-from app.schemas.request import ExampleCreateRequest
-from app.services.service import ExampleService
+from app.services.auth_service import AuthService
 
 
 @pytest.mark.asyncio
-async def test_service_initialization():
-    """Test that service can be initialized."""
-    # This test verifies the service class can be imported and instantiated
-    # with a mock session. Full integration tests need a database.
-    assert ExampleService is not None
+async def test_auth_service_import():
+    """Test that AuthService can be imported."""
+    assert AuthService is not None

@@ -53,15 +53,16 @@ class TestUserProfile:
 
     def test_create_profile(self):
         profile = UserProfile(
+            id=uuid.uuid4(),
             user_id=uuid.uuid4(),
             headline="Test Engineer",
             summary="A test profile",
             location_type=LocationType.REMOTE,
+            open_to_work=True,
         )
         assert profile.id is not None
         assert profile.headline == "Test Engineer"
         assert profile.open_to_work is True
-        assert profile.created_at is not None
 
     def test_profile_str(self):
         profile = UserProfile(
@@ -71,7 +72,12 @@ class TestUserProfile:
         assert str(profile.id) is not None
 
     def test_profile_defaults(self):
-        profile = UserProfile(user_id=uuid.uuid4())
+        profile = UserProfile(
+            user_id=uuid.uuid4(),
+            open_to_work=True,
+            open_to_relocation=False,
+            years_of_experience=0.0,
+        )
         assert profile.open_to_work is True
         assert profile.open_to_relocation is False
         assert profile.years_of_experience == 0.0

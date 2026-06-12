@@ -63,7 +63,7 @@ class AuthService:
         if not verify_password(request.password, user.password_hash):
             return None
 
-        user.last_login_at = datetime.now(timezone.utc)
+        user.last_login_at = datetime.now(timezone.utc).replace(tzinfo=None)
         await self.session.flush()
         return user
 
