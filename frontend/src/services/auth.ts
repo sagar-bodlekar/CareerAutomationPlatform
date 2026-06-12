@@ -10,7 +10,7 @@ export async function register(
   password: string,
   fullName: string,
 ): Promise<AuthTokens> {
-  return createItem("/auth/register", { email, password, full_name: fullName });
+  return createItem("/auth/register", { email, password, display_name: fullName });
 }
 
 export async function refreshToken(token: string): Promise<AuthTokens> {

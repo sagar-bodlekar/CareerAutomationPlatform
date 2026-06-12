@@ -10,7 +10,15 @@ Migrations: cd backend && alembic upgrade head
 
 import asyncio
 import logging
+import sys
+import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+# Ensure backend/ is on sys.path so the shared package is importable
+_backend_dir = str(Path(__file__).resolve().parent.parent / "backend")
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
 
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -42,7 +50,7 @@ async def check_connection(db: AsyncSession) -> bool:
         return False
 
 
-async def seed_profile(db: AsyncSession) -> int:
+async def seed_profile(db: AsyncSession):
     """Insert sample profile data."""
     from profile_service.app.models.models import (
         UserProfile,
@@ -58,9 +66,9 @@ async def seed_profile(db: AsyncSession) -> int:
     existing = result.scalar_one_or_none()
     if existing:
         logger.info("Profile already seeded (id=%s), skipping", existing.id)
-        return existing.id
+        return (existing.id, 1)
 
-    profile = UserProfile(user_id=1, is_active=True, metadata_json={"source": "seed"})
+    profile = UserProfile(user_id=uuid.uuid4(), headline="Senior Full-Stack Engineer", summary="Senior full-stack engineer with 8+ years of experience building scalable web applications. Proficient in Python, TypeScript, React, and cloud infrastructure.")
     db.add(profile)
     await db.flush()
 
@@ -69,14 +77,8 @@ async def seed_profile(db: AsyncSession) -> int:
         full_name="Alex Johnson",
         email="alex.johnson@example.com",
         phone="+1-555-0123",
-        location="San Francisco, CA",
-        linkedin_url="https://linkedin.com/in/alexjohnson",
-        github_url="https://github.com/alexjohnson",
-        portfolio_url="https://alexjohnson.dev",
-        title="Senior Full-Stack Engineer",
-        summary="Senior full-stack engineer with 8+ years of experience building scalable web applications. "
-        "Proficient in Python, TypeScript, React, and cloud infrastructure. "
-        "Passionate about AI-assisted development and developer tooling.",
+        city="San Francisco",
+        state="CA",
     )
     db.add(personal_info)
 
@@ -95,7 +97,7 @@ async def seed_profile(db: AsyncSession) -> int:
         ("CI/CD", "advanced", "DevOps", 4),
     ]
     for name, prof, cat, years in skills_data:
-        db.add(Skill(profile_id=profile.id, name=name, proficiency=prof, category=cat, years_of_experience=years))
+        db.add(Skill(profile_id=profile.id, name=name, proficiency=prof, category=cat, years_used=years))
 
     experiences_data = [
         {
@@ -135,8 +137,8 @@ async def seed_profile(db: AsyncSession) -> int:
         db.add(
             WorkExperience(
                 profile_id=profile.id,
-                company=exp["company"],
-                role=exp["role"],
+                company_name=exp["company"],
+                job_title=exp["role"],
                 start_date=exp["start"],
                 end_date=exp["end"],
                 description=exp["description"],
@@ -164,7 +166,7 @@ async def seed_profile(db: AsyncSession) -> int:
                 field_of_study=edu["field"],
                 start_date=edu["start"],
                 end_date=edu["end"],
-                gpa=edu["gpa"],
+                grade=str(edu["gpa"]),
             )
         )
 
@@ -194,14 +196,15 @@ async def seed_profile(db: AsyncSession) -> int:
         )
 
     await db.flush()
-    logger.info("Seeded profile id=%d with personal info, %d skills, %d experiences, %d education, %d projects",
+    logger.info("Seeded profile id=%s with personal info, %d skills, %d experiences, %d education, %d projects",
                 profile.id, len(skills_data), len(experiences_data), len(education_data), len(projects_data))
-    return profile.id
+    return (profile.id, 1)  # (profile_uuid, profile_int_for_other_services)
 
 
 async def seed_jobs(db: AsyncSession) -> list[int]:
     """Insert sample job listings."""
     from job_service.app.models.models import Job
+    from job_service.app.models.enums import ExperienceLevel, EmploymentType, SalaryCurrency
 
     result = await db.execute(select(Job).limit(1))
     if result.scalar_one_or_none():
@@ -212,105 +215,93 @@ async def seed_jobs(db: AsyncSession) -> list[int]:
     jobs_data = [
         {
             "title": "Senior Software Engineer",
-            "company": "Google",
+            "company_name": "Google",
             "location": "Mountain View, CA",
-            "remote": False,
             "description": "Build the next generation of Google's cloud infrastructure. "
             "Work on distributed systems serving billions of users. "
             "Required: 5+ years experience with large-scale systems.",
             "required_skills": ["Python", "Go", "Distributed Systems", "Kubernetes", "System Design"],
             "salary_min": 180000,
             "salary_max": 280000,
-            "currency": "USD",
-            "experience_level": "senior",
-            "employment_type": "full-time",
-            "url": "https://google.com/careers/123",
-            "source": "google_careers",
+            "salary_currency": SalaryCurrency.USD,
+            "experience_level": ExperienceLevel.SENIOR,
+            "employment_type": EmploymentType.FULL_TIME,
+            "job_url": "https://google.com/careers/123",
         },
         {
             "title": "Full-Stack Engineer",
-            "company": "Stripe",
+            "company_name": "Stripe",
             "location": "San Francisco, CA",
-            "remote": True,
             "description": "Build developer tools and APIs that power online commerce. "
             "Own features end-to-end from design to deployment. "
             "Strong product sense and user empathy required.",
             "required_skills": ["Ruby", "JavaScript", "React", "PostgreSQL", "API Design"],
             "salary_min": 160000,
             "salary_max": 250000,
-            "currency": "USD",
-            "experience_level": "mid",
-            "employment_type": "full-time",
-            "url": "https://stripe.com/jobs/456",
-            "source": "stripe_careers",
+            "salary_currency": SalaryCurrency.USD,
+            "experience_level": ExperienceLevel.MID,
+            "employment_type": EmploymentType.FULL_TIME,
+            "job_url": "https://stripe.com/jobs/456",
         },
         {
             "title": "AI/ML Engineer",
-            "company": "Anthropic",
+            "company_name": "Anthropic",
             "location": "San Francisco, CA",
-            "remote": False,
             "description": "Research and develop safe AI systems. "
             "Work with cutting-edge language models and RLHF. "
             "Published research in ML/NLP preferred.",
             "required_skills": ["Python", "PyTorch", "NLP", "Machine Learning", "Transformers"],
             "salary_min": 200000,
             "salary_max": 350000,
-            "currency": "USD",
-            "experience_level": "senior",
-            "employment_type": "full-time",
-            "url": "https://anthropic.com/careers/789",
-            "source": "anthropic_careers",
+            "salary_currency": SalaryCurrency.USD,
+            "experience_level": ExperienceLevel.SENIOR,
+            "employment_type": EmploymentType.FULL_TIME,
+            "job_url": "https://anthropic.com/careers/789",
         },
         {
             "title": "Backend Engineer",
-            "company": "Datadog",
+            "company_name": "Datadog",
             "location": "New York, NY",
-            "remote": True,
             "description": "Build observability infrastructure at massive scale. "
             "Design and implement high-throughput data pipelines. "
             "Experience with time-series databases a plus.",
             "required_skills": ["Go", "Java", "Kafka", "Cassandra", "Distributed Systems"],
             "salary_min": 150000,
             "salary_max": 240000,
-            "currency": "USD",
-            "experience_level": "mid",
-            "employment_type": "full-time",
-            "url": "https://datadog.com/jobs/101",
-            "source": "datadog_careers",
+            "salary_currency": SalaryCurrency.USD,
+            "experience_level": ExperienceLevel.MID,
+            "employment_type": EmploymentType.FULL_TIME,
+            "job_url": "https://datadog.com/jobs/101",
         },
         {
             "title": "Frontend Engineer",
-            "company": "Figma",
+            "company_name": "Figma",
             "location": "San Francisco, CA",
-            "remote": True,
             "description": "Build real-time collaborative design tools. "
             "Push the boundaries of what's possible in the browser. "
             "Deep expertise in web rendering and Canvas/WebGL.",
             "required_skills": ["TypeScript", "React", "WebGL", "Canvas", "WebAssembly"],
             "salary_min": 160000,
             "salary_max": 260000,
-            "currency": "USD",
-            "experience_level": "mid",
-            "employment_type": "full-time",
-            "url": "https://figma.com/careers/202",
-            "source": "figma_careers",
+            "salary_currency": SalaryCurrency.USD,
+            "experience_level": ExperienceLevel.MID,
+            "employment_type": EmploymentType.FULL_TIME,
+            "job_url": "https://figma.com/careers/202",
         },
         {
             "title": "DevOps Engineer",
-            "company": "Netflix",
+            "company_name": "Netflix",
             "location": "Los Gatos, CA",
-            "remote": False,
             "description": "Build and operate the streaming platform infrastructure. "
             "Design chaos engineering experiments. "
             "Automate everything mindset required.",
             "required_skills": ["AWS", "Terraform", "Kubernetes", "Python", "Chaos Engineering"],
             "salary_min": 170000,
             "salary_max": 290000,
-            "currency": "USD",
-            "experience_level": "senior",
-            "employment_type": "full-time",
-            "url": "https://netflix.com/jobs/303",
-            "source": "netflix_careers",
+            "salary_currency": SalaryCurrency.USD,
+            "experience_level": ExperienceLevel.SENIOR,
+            "employment_type": EmploymentType.FULL_TIME,
+            "job_url": "https://netflix.com/jobs/303",
         },
     ]
 
@@ -336,9 +327,9 @@ async def seed_resumes(db: AsyncSession, profile_id: int) -> int:
         return result.scalar()
 
     resume = Resume(
+        user_id=uuid.uuid4(),
         profile_id=profile_id,
         title="Master Resume",
-        template="modern",
         content={
             "sections": [
                 {"type": "summary", "content": "Senior full-stack engineer with 8+ years of experience..."},
@@ -491,7 +482,7 @@ async def seed_outreach(db: AsyncSession, profile_id: int):
         profile_id=profile_id,
         content_type="cover_letter",
         tone="professional",
-        content_text="Dear Hiring Manager,\n\n"
+        body="Dear Hiring Manager,\n\n"
         "I am writing to express my strong interest in the Senior Software Engineer "
         "position at Google. With over 8 years of experience building large-scale "
         "distributed systems, I am confident that my technical expertise and passion "
@@ -503,7 +494,7 @@ async def seed_outreach(db: AsyncSession, profile_id: int):
         "I would welcome the opportunity to discuss how my experience aligns with "
         "Google's needs. Thank you for your consideration.\n\n"
         "Best regards,\nAlex Johnson",
-        metadata_json={"job_title": "Senior Software Engineer", "company": "Google"},
+        tags={"job_title": "Senior Software Engineer", "company": "Google"},
         version=1,
     )
     db.add(content)
@@ -537,7 +528,7 @@ async def seed_match(db: AsyncSession, profile_id: int, job_ids: list[int]):
             experience_score=breakdown["experience"],
             education_score=breakdown["education"],
             title_score=breakdown["title"],
-            match_data={"computed_at": _now().isoformat()},
+            ai_match_data={"computed_at": _now().isoformat()},
         ))
 
     await db.flush()
@@ -557,9 +548,9 @@ async def seed_all():
         logger.info("Connected to database: %s", settings.postgres_db)
 
         # Seed in dependency order
-        profile_id = await seed_profile(db)
+        profile_uuid, profile_id = await seed_profile(db)
         job_ids = await seed_jobs(db)
-        resume_id = await seed_resumes(db, profile_id)
+        resume_id = await seed_resumes(db, profile_uuid)
         app_id = await seed_application(db, profile_id, job_ids)
         await seed_tracking(db, profile_id)
         await seed_outreach(db, profile_id)
