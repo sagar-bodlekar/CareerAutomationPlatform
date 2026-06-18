@@ -1,15 +1,15 @@
 """Notification service for managing in-app notifications."""
 
 import json
-import logging
 from datetime import datetime, timezone
 from typing import Optional
 
 import redis.asyncio as redis
 
 from shared.config import settings
+from shared.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class NotificationService:
