@@ -1,63 +1,26 @@
 import { Link } from "react-router-dom";
-import { FileText, Plus, Download, Sparkles, BarChart3 } from "lucide-react";
-
-const mockResumes = [
-  { id: 1, title: "Master Resume", type: "master", role: "Full Stack Developer", version: 3, atsScore: 82, updated: "2d ago" },
-  { id: 2, title: "Frontend Engineer - Tech Corp", type: "role-specific", role: "Frontend Engineer", version: 1, atsScore: 91, updated: "1d ago" },
-  { id: 3, title: "Backend Developer - DataFlow", type: "role-specific", role: "Backend Developer", version: 1, atsScore: 78, updated: "3d ago" },
-  { id: 4, title: "ATS Optimized - General", type: "ats-optimized", role: "Software Engineer", version: 2, atsScore: 94, updated: "5d ago" },
-];
-
-function ResumeCard({ resume }: { resume: typeof mockResumes[0] }) {
-  const typeColors: Record<string, string> = {
-    master: "bg-purple-100 text-purple-700",
-    "role-specific": "bg-blue-100 text-blue-700",
-    "ats-optimized": "bg-green-100 text-green-700",
-  };
-
-  return (
-    <div className="group rounded-xl border bg-white p-5 shadow-sm transition-all hover:shadow-md hover:border-primary-200">
-      <div className="flex items-start justify-between">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-400 to-indigo-600 text-white shadow-sm">
-            <FileText className="h-5 w-5" />
-          </div>
-          <div>
-            <Link to={`/resumes/${resume.id}`} className="font-semibold text-gray-900 hover:text-primary-600 transition-colors">
-              {resume.title}
-            </Link>
-            <p className="text-sm text-gray-500">{resume.role}</p>
-          </div>
-        </div>
-        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${typeColors[resume.type] || "bg-gray-100 text-gray-700"}`}>
-          {resume.type.replace("-", " ")}
-        </span>
-      </div>
-
-      <div className="mt-4 flex items-center gap-4 text-xs text-gray-500">
-        <span>v{resume.version}</span>
-        <span>Updated {resume.updated}</span>
-        {resume.atsScore && (
-          <span className={`flex items-center gap-1 font-medium ${resume.atsScore >= 90 ? "text-green-600" : resume.atsScore >= 75 ? "text-yellow-600" : "text-red-500"}`}>
-            <BarChart3 className="h-3 w-3" />
-            ATS: {resume.atsScore}%
-          </span>
-        )}
-      </div>
-
-      <div className="mt-4 flex gap-2">
-        <button className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors">
-          <Download className="h-3 w-3" /> Download PDF
-        </button>
-        <button className="flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors">
-          <Sparkles className="h-3 w-3" /> Optimize
-        </button>
-      </div>
-    </div>
-  );
-}
+import { FileText, Plus } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { useResumes } from "../hooks/useResumes";
+import ResumeCard from "../components/resumes/ResumeCard";
+import { CardSkeleton } from "../components/common/Skeletons";
+import { ErrorFallback } from "../components/common/ErrorFallback";
+import { getErrorMessage } from "../utils/errorHandler";
 
 export default function ResumesPage() {
+  const { user } = useAuth();
+  const profileId = user?.id ?? 0;
+
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useResumes(profileId);
+
+  const resumes = data?.data ?? [];
+
   return (
     <div className="animate-fade-in space-y-6">
       <div className="flex items-center justify-between">
@@ -74,11 +37,51 @@ export default function ResumesPage() {
         </Link>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        {mockResumes.map((resume) => (
-          <ResumeCard key={resume.id} resume={resume} />
-        ))}
-      </div>
+      {/* Loading state */}
+      {isLoading && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <CardSkeleton />
+          <CardSkeleton />
+          <CardSkeleton />
+          <CardSkeleton />
+        </div>
+      )}
+
+      {/* Error state */}
+      {!isLoading && isError && (
+        <ErrorFallback
+          message={getErrorMessage(error)}
+          onRetry={() => refetch()}
+        />
+      )}
+
+      {/* Empty state */}
+      {!isLoading && !isError && resumes.length === 0 && (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white py-16 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 mb-4">
+            <FileText className="h-6 w-6 text-indigo-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">No resumes yet</h3>
+          <p className="mt-1 text-sm text-gray-500 max-w-sm">
+            Generate your first resume from your profile data and choose a template that showcases your skills.
+          </p>
+          <Link
+            to="/resumes/generate"
+            className="mt-4 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 transition-colors"
+          >
+            Generate Your First Resume
+          </Link>
+        </div>
+      )}
+
+      {/* Resume cards */}
+      {!isLoading && !isError && resumes.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {resumes.map((resume) => (
+            <ResumeCard key={resume.id} resume={resume} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
