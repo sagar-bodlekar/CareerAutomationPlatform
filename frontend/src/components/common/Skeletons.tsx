@@ -146,6 +146,80 @@ export function JobDetailSkeleton() {
   );
 }
 
+export function ApplicationDetailSkeleton() {
+  return (
+    <div className="animate-pulse space-y-6">
+      {/* Back button */}
+      <div className="h-4 w-32 rounded bg-gray-200" />
+
+      {/* Header card */}
+      <div className="rounded-xl border bg-white p-6 shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-3">
+            <div className="h-6 w-72 rounded bg-gray-200" />
+            <div className="h-4 w-40 rounded bg-gray-100" />
+            <div className="h-3 w-28 rounded bg-gray-100" />
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="space-y-1 text-right">
+              <div className="h-5 w-12 rounded bg-gray-200" />
+              <div className="h-3 w-10 rounded bg-gray-100" />
+            </div>
+            <div className="h-9 w-36 rounded-lg bg-gray-200" />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Timeline skeleton */}
+        <div className="rounded-xl border bg-white p-6 shadow-sm">
+          <div className="h-5 w-40 rounded bg-gray-200 mb-6" />
+          <div className="space-y-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex gap-4">
+                <div className="h-8 w-8 shrink-0 rounded-full bg-gray-200" />
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-start justify-between">
+                    <div className="h-4 w-36 rounded bg-gray-200" />
+                    <div className="h-3 w-16 rounded bg-gray-100" />
+                  </div>
+                  <div className="h-3 w-48 rounded bg-gray-100" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Sidebar skeletons */}
+        <div className="space-y-4">
+          <div className="rounded-xl border bg-white p-6 shadow-sm">
+            <div className="h-5 w-36 rounded bg-gray-200 mb-4" />
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
+                  <div className="h-4 w-20 rounded bg-gray-200" />
+                  <div className="h-4 w-16 rounded bg-gray-200" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-xl border bg-white p-6 shadow-sm">
+            <div className="h-5 w-28 rounded bg-gray-200 mb-4" />
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex justify-between">
+                  <div className="h-4 w-24 rounded bg-gray-200" />
+                  <div className="h-4 w-20 rounded bg-gray-200" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function CardSkeleton() {
   return (
     <div className="animate-pulse rounded-xl border bg-white p-5 shadow-sm">
