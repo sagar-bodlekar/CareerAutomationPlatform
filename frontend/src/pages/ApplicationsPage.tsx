@@ -1,36 +1,43 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Send, Building2, ChevronRight } from "lucide-react";
+import { Send, Clock } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { useApplications } from "../hooks/useApplications";
+import ApplicationCard from "../components/applications/ApplicationCard";
+import { CardSkeleton } from "../components/common/Skeletons";
+import { ErrorFallback } from "../components/common/ErrorFallback";
+import { getErrorMessage } from "../utils/errorHandler";
 
-const mockApps = [
-  { id: 1, company: "Tech Corp", role: "Senior Software Engineer", status: "sent", progress: 50, updated: "2h ago", matchScore: 92 },
-  { id: 2, company: "DataFlow", role: "Backend Developer", status: "draft", progress: 0, updated: "1d ago", matchScore: 76 },
-  { id: 3, company: "Startup Inc", role: "Frontend Engineer", status: "delivered", progress: 60, updated: "4h ago", matchScore: 88 },
-  { id: 4, company: "AI Labs", role: "ML Engineer", status: "interview_scheduled", progress: 85, updated: "1d ago", matchScore: 65 },
-  { id: 5, company: "CloudScale", role: "DevOps Engineer", status: "opened", progress: 70, updated: "3d ago", matchScore: 82 },
-  { id: 6, company: "Tech Corp", role: "Staff Engineer", status: "offer_received", progress: 95, updated: "5d ago", matchScore: 90 },
+const statusFilters = [
+  { key: "all", label: "All" },
+  { key: "draft", label: "Draft" },
+  { key: "sent", label: "Sent" },
+  { key: "delivered", label: "Delivered" },
+  { key: "opened", label: "Opened" },
+  { key: "replied", label: "Replied" },
+  { key: "interview_scheduled", label: "Interview" },
+  { key: "offer_received", label: "Offer" },
+  { key: "rejected", label: "Rejected" },
 ];
 
-const statusConfig: Record<string, { label: string; color: string }> = {
-  draft: { label: "Draft", color: "bg-gray-100 text-gray-700" },
-  matched: { label: "Matched", color: "bg-blue-100 text-blue-700" },
-  resume_generated: { label: "Resume Ready", color: "bg-indigo-100 text-indigo-700" },
-  cover_letter_generated: { label: "Letter Ready", color: "bg-purple-100 text-purple-700" },
-  email_prepared: { label: "Email Ready", color: "bg-pink-100 text-pink-700" },
-  sent: { label: "Sent", color: "bg-cyan-100 text-cyan-700" },
-  delivered: { label: "Delivered", color: "bg-teal-100 text-teal-700" },
-  opened: { label: "Opened", color: "bg-emerald-100 text-emerald-700" },
-  replied: { label: "Replied", color: "bg-green-100 text-green-700" },
-  interview_scheduled: { label: "Interview", color: "bg-lime-100 text-lime-700" },
-  offer_received: { label: "Offer!", color: "bg-amber-100 text-amber-700" },
-  rejected: { label: "Rejected", color: "bg-red-100 text-red-700" },
-  withdrawn: { label: "Withdrawn", color: "bg-gray-200 text-gray-500" },
-};
-
 export default function ApplicationsPage() {
-  const [filter, setFilter] = useState<string>("all");
+  const { user } = useAuth();
+  const profileId = user?.id ?? 0;
 
-  const filtered = filter === "all" ? mockApps : mockApps.filter((a) => a.status === filter);
+  const [filter, setFilter] = useState("all");
+
+  const statusParam = filter === "all" ? undefined : filter;
+
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useApplications(profileId, statusParam);
+
+  const applications = data?.data ?? [];
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -43,67 +50,83 @@ export default function ApplicationsPage() {
 
       {/* Filter tabs */}
       <div className="flex gap-2 overflow-x-auto pb-2">
-        {["all", "draft", "sent", "delivered", "opened", "replied", "interview_scheduled", "offer_received"].map((s) => (
+        {statusFilters.map((s) => (
           <button
-            key={s}
-            onClick={() => setFilter(s)}
+            key={s.key}
+            onClick={() => setFilter(s.key)}
             className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-              filter === s ? "bg-primary-600 text-white shadow-sm" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+              filter === s.key
+                ? "bg-primary-600 text-white shadow-sm"
+                : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
             }`}
           >
-            {s === "all" ? "All" : statusConfig[s]?.label || s}
+            {s.label}
           </button>
         ))}
       </div>
 
-      {/* Application cards */}
-      <div className="space-y-3">
-        {filtered.map((app) => {
-          const cfg = statusConfig[app.status] || { label: app.status, color: "bg-gray-100 text-gray-700" };
-          return (
-            <Link
-              key={app.id}
-              to={`/applications/${app.id}`}
-              className="group block rounded-xl border bg-white p-5 shadow-sm transition-all hover:shadow-md hover:border-primary-200"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-cyan-600 text-white shadow-sm">
-                    <Send className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">{app.role}</h3>
-                    <p className="flex items-center gap-1 text-sm text-gray-500">
-                      <Building2 className="h-3.5 w-3.5" /> {app.company}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${cfg.color}`}>
-                    {cfg.label}
-                  </span>
-                  <span className="text-sm font-semibold text-gray-400">{app.matchScore}%</span>
-                  <ChevronRight className="h-5 w-5 text-gray-300 group-hover:text-gray-500 transition-colors" />
-                </div>
-              </div>
+      {/* Loading state */}
+      {isLoading && (
+        <div className="space-y-3">
+          <CardSkeleton />
+          <CardSkeleton />
+          <CardSkeleton />
+        </div>
+      )}
 
-              {/* Progress bar */}
-              <div className="mt-3">
-                <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
-                  <span>Progress</span>
-                  <span>{app.progress}%</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-gray-100">
-                  <div
-                    className="h-1.5 rounded-full bg-gradient-to-r from-primary-500 to-primary-600 transition-all"
-                    style={{ width: `${app.progress}%` }}
-                  />
-                </div>
-              </div>
+      {/* Error state */}
+      {!isLoading && isError && (
+        <ErrorFallback
+          message={getErrorMessage(error)}
+          onRetry={() => refetch()}
+        />
+      )}
+
+      {/* Empty state */}
+      {!isLoading && !isError && applications.length === 0 && (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white py-16 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 mb-4">
+            <Send className="h-6 w-6 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">No applications yet</h3>
+          <p className="mt-1 text-sm text-gray-500 max-w-sm">
+            {filter === "all"
+              ? "Start your job search journey by finding matching opportunities."
+              : `No applications with status "${statusFilters.find((s) => s.key === filter)?.label}".`}
+          </p>
+          {filter === "all" ? (              <Link
+              to="/jobs"
+              className="mt-4 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 transition-colors"
+            >
+              Browse Jobs
             </Link>
-          );
-        })}
-      </div>
+          ) : (
+            <button
+              onClick={() => setFilter("all")}
+              className="mt-4 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 transition-colors"
+            >
+              View All Applications
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Application cards */}
+      {!isLoading && !isError && applications.length > 0 && (
+        <div className="space-y-3">
+          {applications.map((app) => (
+            <ApplicationCard key={app.id} application={app} />
+          ))}
+
+          {/* Refetch indicator */}
+          {isFetching && (
+            <div className="flex items-center justify-center gap-2 py-3 text-xs text-gray-400">
+              <Clock className="h-3 w-3" />
+              Updating...
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
