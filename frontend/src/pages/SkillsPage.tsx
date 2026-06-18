@@ -1,7 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Search, X, Award } from "lucide-react";
+import { Plus, Search, X, Award, Save, AlertCircle } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { useProfile, useUpdateProfile } from "../hooks/useProfile";
+import { ProfileSkeleton } from "../components/common/Skeletons";
+import { ErrorFallback } from "../components/common/ErrorFallback";
+import { getErrorMessage } from "../utils/errorHandler";
+import type { Skill, Profile } from "../types";
 
+// Suggestion pool of common skills (no backend catalog available)
 const allSkills = [
   { name: "Python", category: "technical" },
   { name: "React", category: "technical" },
@@ -33,28 +40,93 @@ function Badge({ children, color }: { children: React.ReactNode; color?: string 
 }
 
 export default function SkillsPage() {
+  const { user } = useAuth();
+  const profileId = user?.id ?? 0;
+
+  const {
+    data: profile,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useProfile(profileId);
+
+  const updateProfile = useUpdateProfile(profileId);
+
   const [search, setSearch] = useState("");
-  const [mySkills, setMySkills] = useState([
-    { name: "Python", proficiency: "expert" },
-    { name: "React", proficiency: "advanced" },
-    { name: "TypeScript", proficiency: "advanced" },
-    { name: "PostgreSQL", proficiency: "advanced" },
-  ]);
+  const [mySkills, setMySkills] = useState<Skill[]>([]);
+  const [hasChanges, setHasChanges] = useState(false);
 
-  const filtered = allSkills.filter((s) => s.name.toLowerCase().includes(search.toLowerCase()) && !mySkills.find((ms) => ms.name === s.name));
+  // Initialize local skills state from profile data
+  useEffect(() => {
+    if (profile?.skills) {
+      setMySkills(profile.skills);
+      setHasChanges(false);
+    }
+  }, [profile?.skills]);
 
-  const addSkill = (name: string) => {
-    setMySkills([...mySkills, { name, proficiency: "intermediate" }]);
+  const addSkill = useCallback((name: string) => {
+    const candidate = allSkills.find((s) => s.name === name);
+    if (!candidate) return;
+    const newSkill: Skill = {
+      id: 0, // New skill, backend will assign id
+      name: candidate.name,
+      category: candidate.category,
+      proficiency: "intermediate",
+      years_experience: undefined,
+      is_top_skill: false,
+    };
+    setMySkills((prev) => [...prev, newSkill]);
+    setHasChanges(true);
+  }, []);
+
+  const removeSkill = useCallback((name: string) => {
+    setMySkills((prev) => prev.filter((s) => s.name !== name));
+    setHasChanges(true);
+  }, []);
+
+  const setProficiency = useCallback((name: string, proficiency: string) => {
+    setMySkills((prev) => prev.map((s) => (s.name === name ? { ...s, proficiency } : s)));
+    setHasChanges(true);
+  }, []);
+
+  const handleSave = async () => {
+    try {
+      await updateProfile.mutateAsync({ skills: mySkills } as Partial<Profile>);
+      setHasChanges(false);
+    } catch {
+      // Error shown inline
+    }
   };
 
-  const removeSkill = (name: string) => {
-    setMySkills(mySkills.filter((s) => s.name !== name));
-  };
+  const suggestedSkills = allSkills.filter(
+    (s) => s.name.toLowerCase().includes(search.toLowerCase()) && !mySkills.find((ms) => ms.name === s.name)
+  );
 
-  const setProficiency = (name: string, proficiency: string) => {
-    setMySkills(mySkills.map((s) => (s.name === name ? { ...s, proficiency } : s)));
-  };
+  const saveError = updateProfile.isError ? getErrorMessage(updateProfile.error) : null;
 
+  // --- Loading state ---
+  if (isLoading) {
+    return (
+      <div className="animate-fade-in">
+        <ProfileSkeleton />
+      </div>
+    );
+  }
+
+  // --- Error state ---
+  if (isError) {
+    return (
+      <div className="animate-fade-in space-y-6">
+        <ErrorFallback
+          message={getErrorMessage(error)}
+          onRetry={() => refetch()}
+        />
+      </div>
+    );
+  }
+
+  // --- Populated state ---
   return (
     <div className="animate-fade-in space-y-6">
       <div className="flex items-center justify-between">
@@ -64,34 +136,72 @@ export default function SkillsPage() {
           </h1>
           <p className="text-gray-500">Manage your skills and proficiencies</p>
         </div>
-        <Link to="/profile" className="text-sm font-medium text-primary-600 hover:text-primary-500">
-          ← Back to Profile
-        </Link>
+        <div className="flex items-center gap-3">
+          {hasChanges && (
+            <button
+              onClick={handleSave}
+              disabled={updateProfile.isPending}
+              className="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 disabled:opacity-50 transition-colors"
+            >
+              {updateProfile.isPending ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              {updateProfile.isPending ? "Saving..." : "Save Changes"}
+            </button>
+          )}
+          <Link to="/profile" className="text-sm font-medium text-gray-500 hover:text-gray-700">
+            ← Back to Profile
+          </Link>
+        </div>
       </div>
+
+      {saveError && (
+        <div className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {saveError}
+        </div>
+      )}
 
       {/* My skills */}
       <div className="rounded-xl border bg-white p-6 shadow-sm">
         <h2 className="mb-4 text-lg font-semibold text-gray-900">Your Skills ({mySkills.length})</h2>
-        <div className="flex flex-wrap gap-2">
-          {mySkills.map((skill) => (
-            <Badge key={skill.name} color={skill.proficiency === "expert" ? "bg-purple-100 text-purple-700" : skill.proficiency === "advanced" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}>
-              {skill.name}
-              <select
-                value={skill.proficiency}
-                onChange={(e) => setProficiency(skill.name, e.target.value)}
-                className="ml-1 text-xs bg-transparent border-none outline-none cursor-pointer"
+        {mySkills.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {mySkills.map((skill) => (
+              <Badge
+                key={skill.name}
+                color={
+                  skill.proficiency === "expert"
+                    ? "bg-purple-100 text-purple-700"
+                    : skill.proficiency === "advanced"
+                    ? "bg-blue-100 text-blue-700"
+                    : "bg-green-100 text-green-700"
+                }
               >
-                <option value="beginner">Beginner</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="advanced">Advanced</option>
-                <option value="expert">Expert</option>
-              </select>
-              <button onClick={() => removeSkill(skill.name)} className="ml-1 hover:text-danger-500">
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          ))}
-        </div>
+                {skill.name}
+                <select
+                  value={skill.proficiency}
+                  onChange={(e) => setProficiency(skill.name, e.target.value)}
+                  className="ml-1 text-xs bg-transparent border-none outline-none cursor-pointer"
+                >
+                  <option value="beginner">Beginner</option>
+                  <option value="intermediate">Intermediate</option>
+                  <option value="advanced">Advanced</option>
+                  <option value="expert">Expert</option>
+                </select>
+                <button onClick={() => removeSkill(skill.name)} className="ml-1 hover:text-red-500 transition-colors">
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        ) : (
+          <p className="py-6 text-center text-sm text-gray-400">
+            No skills added yet. Use the section below to search and add skills.
+          </p>
+        )}
       </div>
 
       {/* Add skills */}
@@ -108,7 +218,7 @@ export default function SkillsPage() {
           />
         </div>
         <div className="flex flex-wrap gap-2">
-          {filtered.map((skill) => (
+          {suggestedSkills.map((skill) => (
             <button
               key={skill.name}
               onClick={() => addSkill(skill.name)}
@@ -119,8 +229,10 @@ export default function SkillsPage() {
               <span className="text-gray-400">({skill.category})</span>
             </button>
           ))}
-          {filtered.length === 0 && search && (
-            <p className="text-sm text-gray-400">No skills found</p>
+          {suggestedSkills.length === 0 && (
+            <p className="w-full py-4 text-center text-sm text-gray-400">
+              {search ? "No skills found" : "All suggested skills have been added"}
+            </p>
           )}
         </div>
       </div>
