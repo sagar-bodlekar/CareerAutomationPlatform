@@ -522,10 +522,181 @@ This section documents all known race conditions and their mitigation strategies
 
 ---
 
-> **Document Version:** 1.1  
-> **Total Edge Cases Documented:** 246  
-> **Critical Severity:** 33  
-> **High Severity:** 53  
-> **Medium Severity:** 93  
-> **Low Severity:** 67  
-> **Last Updated:** June 11, 2026
+---
+
+## 16. Frontend Real Data Integration Edge Cases
+
+This section documents edge cases specific to replacing mock/sample data with live backend API calls in the frontend.
+
+### 16.1 API Integration
+
+| # | Edge Case | Expected Behavior | Severity |
+|---|-----------|-------------------|----------|
+| EC-247 | Backend API endpoint returns 200 but with null data | Frontend should check for null/undefined and show empty state instead of crashing | High |
+| EC-248 | Backend returns data in unexpected format (field name mismatch) | TypeScript catches at compile time; runtime should log warning and show partial data | High |
+| EC-249 | Backend response envelope changes (e.g., `data` becomes `data.items`) | Frontend will break until updated; must coordinate backend + frontend deploys | Critical |
+| EC-250 | Backend returns paginated response but frontend expects single item | Frontend parses incorrectly, shows `[Object object]`; type validation should catch | Medium |
+| EC-251 | API endpoint returns 204 No Content (e.g., after delete) | Frontend should handle empty response body gracefully; not try to parse JSON | Medium |
+| EC-252 | Backend adds new optional field to response | Frontend should ignore unknown fields (TypeScript structural typing may catch missing fields but ignores extras) | Low |
+| EC-253 | Backend removes a field that frontend depends on | Frontend renders `undefined` — must be caught during contract alignment phase | Critical |
+| EC-254 | API returns HTML error page instead of JSON (proxy misconfig) | Frontend JSON parse fails; show generic error rather than cryptic parse error | High |
+| EC-255 | Backend returns field with wrong type (string instead of number for `id`) | Runtime type check: log warning, attempt coercion, show error if not possible | High |
+| EC-256 | Image URL from backend is broken or returns 404 | Show fallback placeholder image, log warning | Low |
+| EC-257 | Backend date format differs from frontend expectation (e.g., "2024-01-01" vs "2024-01-01T00:00:00Z") | Normalize date parsing in a shared utility; don't assume format | Medium |
+| EC-258 | Salary range from backend has null min/max | Display "Salary not disclosed" instead of "$null - $null" | Medium |
+| EC-259 | Job skills array is empty | Show "No specific skills listed" instead of empty tag container | Low |
+| EC-260 | Company logo URL is null | Show initials fallback (already implemented in JobCard) | Low |
+
+### 16.2 Loading States
+
+| # | Edge Case | Expected Behavior | Severity |
+|---|-----------|-------------------|----------|
+| EC-261 | API response takes >10 seconds (network congestion) | Show loading skeleton for first 5 seconds, then show warning "Still loading..." with cancel option | Medium |
+| EC-262 | Rapid page navigation causes flash of loading states | React Query `keepPreviousData: true` (now `placeholderData`) should preserve previous data while new data loads | Medium |
+| EC-263 | Skeleton loader causes layout shift when replaced by real content | Skeleton must match final layout exactly (dimensions, spacing) to prevent CLS | High |
+| EC-264 | Multiple skeleton loaders on same page cause cumulative layout shift | Each skeleton must have fixed dimensions matching the final content | High |
+| EC-265 | Background refetch shows brief loading state on already-loaded page | `isFetching` vs `isLoading`: show subtle indicator, not full skeleton | Medium |
+| EC-266 | Page loads with partial data (some queries succeed, others fail) | Show available data, show error state only for failed sections | Medium |
+| EC-267 | Infinite scroll loads more items while user is interacting with list | Append new items without shifting existing content or scroll position | High |
+| EC-268 | Skeleton shows for 50ms then data arrives (flash of skeleton) | Add minimum display time for skeleton (300ms) to prevent flicker | Low |
+| EC-269 | Tab becomes inactive during long load | Pause polling/refetch when tab is hidden (use `document.hidden`), resume on focus | Medium |
+| EC-270 | User navigates away before load completes | Cancel in-flight requests on unmount via React Query `queryFn` signal | High |
+
+### 16.3 Error Handling
+
+| # | Edge Case | Expected Behavior | Severity |
+|---|-----------|-------------------|----------|
+| EC-271 | API returns 401 on every page load (token expired, refresh fails) | Auto-redirect to login with message "Your session has expired. Please log in again." | Critical |
+| EC-272 | API returns 403 on a read-only page (user shouldn't be there) | Show "You don't have permission" with link to dashboard | High |
+| EC-273 | API returns 429 after user submits a form | Show cooldown timer "Too many requests. Try again in X seconds." Keep form data intact | Medium |
+| EC-274 | API returns 500 during profile save | Show error toast "Could not save changes. Please try again." Preserve form edits | High |
+| EC-275 | Network disconnected mid-form submission | Save form data to localStorage, show offline banner, retry on reconnect | High |
+| EC-276 | API returns error with no error message | Show generic message "An unexpected error occurred. Please try again." | Medium |
+| EC-277 | API returns error with Unicode/malformed error message | Sanitize error message display; log raw for debugging | Low |
+| EC-278 | Concurrent mutations fail (one succeeds, one fails) | Show success toast for one, error toast for other. Don't roll back the successful one | High |
+| EC-279 | User submits form, gets 422 with field errors, but field no longer exists in form | Show generic validation error, log unexpected field name | Medium |
+| EC-280 | Error boundary catches an error from a non-critical UI section | Show only that section's fallback, not entire page crash | High |
+| EC-281 | Error boundary catches error during error boundary rendering | Epic fail — show completely static fallback with hard reload button | Critical |
+| EC-282 | API error occurs but user has already navigated to another page | Cancel in-flight error handling (check if component is mounted before showing error) | Medium |
+| EC-283 | Multiple rapid API failures (cascade failure due to downstream) | Show "Some features are currently unavailable" banner, not individual errors for each failed query | Medium |
+| EC-284 | API returns corrupted data that crashes component render | Error boundary catches, shows section fallback, logs error | High |
+| EC-285 | Retry button clicked but API is still down | Show "Still having trouble" after 3 retries, suggest checking back later | Medium |
+
+### 16.4 Empty States
+
+| # | Edge Case | Expected Behavior | Severity |
+|---|-----------|-------------------|----------|
+| EC-286 | New user with no profile data visits dashboard | Show onboarding wizard: "Let's set up your profile!" with CTA to add personal info | Low |
+| EC-287 | User has profile but no skills | Show skills section with "Add your first skill" prominent button | Low |
+| EC-288 | User has profile but no experience | Show experience section with "Add your first work experience" | Low |
+| EC-289 | Job search with multiple filters returns no results | Show "No jobs match your filters" with suggestions to broaden search | Low |
+| EC-290 | No applications created yet | Show "Start your job search journey" with link to browse jobs | Low |
+| EC-291 | No resumes generated yet | Show "Generate your first resume" with link to resume generator | Low |
+| EC-292 | No notifications | Show "No notifications yet. You'll see updates here when things happen." | Low |
+| EC-293 | No tracking data yet (never submitted an application) | Show "Submit your first application to see tracking data" with link to jobs | Low |
+| EC-294 | Empty state and loading state flash before showing empty state | Prevent loading state if we know the user is new (check query cache) | Low |
+| EC-295 | Empty state CTA button leads to page that also has empty state | Ensure CTAs always lead to actionable pages, not recursive empty states | Medium |
+
+### 16.5 Mutation Edge Cases
+
+| # | Edge Case | Expected Behavior | Severity |
+|---|-----------|-------------------|----------|
+| EC-296 | User clicks "Submit" twice within 100ms | Frontend debounce: only first click triggers request; second click ignored | High |
+| EC-297 | User clicks "Submit", then immediately navigates away | Mutation should still complete (don't cancel on navigation); show toast on other page | High |
+| EC-298 | Optimistic update adds item to list, mutation fails and needs rollback | Remove optimistically added item, show error toast, keep other items intact | High |
+| EC-299 | Optimistic update modifies item, mutation fails and needs rollback | Revert to pre-mutation state, show error toast | High |
+| EC-300 | User creates application for a job they already applied to | Backend returns 409, frontend shows "You've already applied to this position", navigates to existing application | Medium |
+| EC-301 | Resume generation takes >30 seconds (no progress) | Show progress bar with estimated time, allow cancellation | Medium |
+| EC-302 | Resume generation fails after 30 seconds | Show error toast, suggest trying again, keep form data for retry | High |
+| EC-303 | Multiple mutations in quick succession (save profile, add skill, add experience) | Queue mutations, process sequentially, show single saving indicator | Medium |
+| EC-304 | File upload (avatar) fails mid-upload | Show progress bar stuck, offer retry or cancel after 10s timeout | Medium |
+| EC-305 | Mutation succeeds but cache invalidation fails | Manual refresh trigger available: show "Refresh to see updates" link | Medium |
+| EC-306 | Mutation succeeds but UI does not update (stale cache) | Set `refetchActive: true` on mutation; if still stale, force invalidate | Medium |
+| EC-307 | User is editing a form, mutation from another tab updates the data | Show banner: "This data was updated in another tab. Refresh to see changes." | Medium |
+| EC-308 | Mutation is pending and user closes the browser tab | Show `beforeunload` warning: "You have unsaved changes. Are you sure you want to leave?" | Medium |
+| EC-309 | Mutation fails due to network error, but data was actually saved on server | Reconciliation: check state on next page load, resolve inconsistency | High |
+
+### 16.6 Token & Auth Race Conditions
+
+| # | Edge Case | Expected Behavior | Severity |
+|---|-----------|-------------------|----------|
+| EC-310 | 10 simultaneous API calls triggered on page load, all with expired token | First call triggers refresh, subsequent 9 calls should queue and await refresh result | Critical |
+| EC-311 | Token refresh API call also returns 401 | Stop all queued requests, clear tokens, redirect to login | Critical |
+| EC-312 | User logs out while token refresh is in progress | Cancel refresh, clear tokens, ignore all in-flight requests | High |
+| EC-313 | User logs in on two tabs simultaneously | Both tabs get valid tokens; on logout from one tab, other tab should detect via `storage` event | High |
+| EC-314 | Token expires mid-form submission (user is filling form for 15+ min) | Auto-refresh token silently, retry the mutation with new token, no user interruption | High |
+| EC-315 | Refresh token is near expiry (within 2 minutes) | Pre-emptively refresh token in background before it expires | Medium |
+| EC-316 | OAuth token expires mid-session (Gmail/Outlook API token) | Show warning: "Email connection expired. Please re-authorize to continue sending applications." | High |
+| EC-317 | Multiple tabs all try to refresh at the same time | Only one tab should refresh; others detect via `storage` event and use new token | Medium |
+| EC-318 | Token stored in localStorage is cleared by user (privacy settings) | On any API call, if no token found, redirect to login without crashing | Medium |
+| EC-319 | Token refresh returns new refresh token (rotation) | Update both access and refresh token in localStorage | High |
+| EC-320 | Token contains user info (decoded JWT) but user was deleted | Auth middleware returns 401; frontend clears tokens and redirects to login | Medium |
+
+### 16.7 Cache & Stale Data
+
+| # | Edge Case | Expected Behavior | Severity |
+|---|-----------|-------------------|----------|
+| EC-321 | User views job list, applies to a job, navigates back — job list still shows "Apply" not "Applied" | Cache invalidation on application create should refetch job list or update locally | Medium |
+| EC-322 | User generates a new resume, but resume list still shows old version | Invalidate `['resumes']` query on generation success | Medium |
+| EC-323 | User updates profile, but dashboard stat cards show old values | Invalidate `['tracking', 'stats']` after profile update | Medium |
+| EC-324 | User marks notification read in one tab, but other tab still shows unread count | Invalidate `['notifications', 'unread']` across all tabs via `queryClient.invalidateQueries` | Medium |
+| EC-325 | Stale data is shown for 30+ minutes without refresh | Show warning banner: "Data may be outdated. Refresh to see latest." | Low |
+| EC-326 | Browser tab is backgrounded for 1+ hour, then focused | React Query refetches all active queries on window focus (stale ones only) | Low |
+| EC-327 | User submits application, goes back, sees application still in "draft" | Optimistic update should immediately show "sent" status before server confirms | Medium |
+| EC-328 | Cache grows too large (>50MB) from unused query data | `gcTime: 5 * 60 * 1000` garbage collects after 5 minutes of inactivity | Low |
+| EC-329 | User removes a skill, navigates to skills page, skill still shows | Optimistic removal should update cache immediately; if mutation fails, rollback | Medium |
+| EC-330 | User changes remote preference from "remote" to "onsite", job results not updated | Invalidate `['jobs']` query when profile changes that affects job matching | Low |
+
+### 16.8 Performance During Real Data Migration
+
+| # | Edge Case | Expected Behavior | Severity |
+|---|-----------|-------------------|----------|
+| EC-331 | First page load fetches 10+ API queries simultaneously | Batch/normalize queries where possible; show progressive loading (content appears as queries resolve) | Medium |
+| EC-332 | Profile page renders 100+ skills without virtualization | Virtualize skill list or paginate (show 20, "Show more" button) | Medium |
+| EC-333 | Application list has 1000+ applications | Server-side pagination + virtual list client-side | High |
+| EC-334 | Dashboard fetches stats + activity + matches + trends in parallel | All fetches are parallel (React Query default); aggregate loading state | Low |
+| EC-335 | Chart component re-renders on every data refetch | Memoize chart data with `useMemo`, prevent unnecessary chart re-renders | Medium |
+| EC-336 | Filter change on job page triggers new API call before previous completes | Cancel previous query (AbortController) when new filter applied | Medium |
+| EC-337 | Rapid typing in search input triggers API call on every keystroke | Debounce search input by 300ms before triggering query | High |
+| EC-338 | PDF download freezes UI for large files | Stream PDF download, show progress, allow cancel | Medium |
+| EC-339 | Too many skeleton loaders cause CPU spike | Reduce skeleton count, use CSS animation instead of JS | Low |
+| EC-340 | React DevTools causes performance degradation in development | Remove DevTools from production build | Low |
+
+### 16.9 Migration-Specific Edge Cases
+
+| # | Edge Case | Expected Behavior | Severity |
+|---|-----------|-------------------|----------|
+| EC-341 | Mock data has different structure than real API data | Component works with mock data but breaks with real data. Must validate before migration | Critical |
+| EC-342 | Mock data uses `id: number` but API returns `id: string` (UUID) | TypeScript error on migration; must update all type definitions and comparisons | High |
+| EC-343 | Mock data uses hardcoded enum values that don't match API enums | Update enum values to match API; verify all conditional logic (status checks, filters) | High |
+| EC-344 | Component renders mock data synchronously but real data is async | Component must handle async state (loading → data). This is the core migration change | High |
+| EC-345 | Parent component passes mock data as prop, child uses it without null check | Real data may be undefined during load; add null/undefined guards to child components | High |
+| EC-346 | Migration is done gradually — some pages use real data, others use mock | Ensure consistent UX: mock data pages should also handle loading/error states for future compatibility | Medium |
+| EC-347 | Backend is not deployed yet during frontend migration | Use MSW handlers locally to simulate backend responses during frontend development | Medium |
+| EC-348 | Real data migration reveals missing backend endpoints | Frontend service file calls endpoint that doesn't exist yet; must coordinate backend implementation | Medium |
+| EC-349 | After migration, previously working mock-data feature breaks | Regression: components that worked with sync data may break with async data flow | Critical |
+| EC-350 | TypeScript errors on migration surface everywhere | Expected — fix incrementally per-page, don't try to fix all at once | Medium |
+
+---
+
+### 16.10 Deleted Account & Orphaned Data
+
+| # | Edge Case | Expected Behavior | Severity |
+|---|-----------|-------------------|----------|
+| EC-351 | User deletes account, then tries to navigate using browser back button | Auth check on app mount should detect deleted user → auto-redirect to login | High |
+| EC-352 | User's profile is deleted by admin, user is still on profile edit page | Next API call returns 404, show "Profile no longer available" with link to support | High |
+| EC-353 | Job that user applied to is deleted from backend | Application detail shows "Job no longer available" but keeps application data | Medium |
+| EC-354 | Resume PDF file is deleted from MinIO but DB record exists | Download returns 404, show "Resume file unavailable. Regenerate to create a new one." | Medium |
+| EC-355 | User's OAuth connection is revoked by provider | Next email delivery attempt fails, show re-authorization prompt | High |
+| EC-356 | User has drafts/cached data from before account deletion | Clear all local state on logout/deletion; no stale data from previous sessions | Medium |
+
+---
+
+> **Document Version:** 1.2  
+> **Total Edge Cases Documented:** 356  
+> **Critical Severity:** 41  
+> **High Severity:** 70  
+> **Medium Severity:** 139  
+> **Low Severity:** 86  
+> **Last Updated:** June 18, 2026 
+> **New Section:** 16 — Frontend Real Data Integration Edge Cases

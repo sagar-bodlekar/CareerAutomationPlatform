@@ -1590,6 +1590,176 @@ services:
 
 ---
 
+## 16. Frontend Data Flow & State Architecture
+
+### 16.1 Data Fetching Strategy
+
+The frontend uses **React Query (TanStack Query)** as the primary data fetching and state management layer.
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│                    UI COMPONENT LAYER                               │
+│  Pages & Components consume data via custom hooks                   │
+└──────────────────────┬─────────────────────────────────────────────┘
+                       │
+                       ▼
+┌────────────────────────────────────────────────────────────────────┐
+│                      CUSTOM HOOK LAYER                              │
+│  useAuth · useProfile · useJobs · useResumes · useApplications     │
+│  useTracking · useNotifications · useMatches                       │
+│                                                                     │
+│  • Encapsulates React Query (useQuery / useMutation)               │
+│  • Manages cache keys, stale times, refetch intervals              │
+│  • Provides loading/error/success states to components             │
+└──────────────────────┬─────────────────────────────────────────────┘
+                       │
+                       ▼
+┌────────────────────────────────────────────────────────────────────┐
+│                     SERVICE / API LAYER                             │
+│  profiles.ts · auth.ts · jobs.ts · resumes.ts · applications.ts    │
+│  matches.ts · outreach.ts · tracking.ts · notifications.ts         │
+│                                                                     │
+│  • Thin HTTP clients wrapping Axios instance                        │
+│  • Each function maps to a single API endpoint                      │
+│  • Typed request/response interfaces                               │
+└──────────────────────┬─────────────────────────────────────────────┘
+                       │
+                       ▼
+┌────────────────────────────────────────────────────────────────────┐
+│                     AXIOS CLIENT LAYER                              │
+│  api.ts                                                             │
+│                                                                     │
+│  • Base URL and common headers                                      │
+│  • JWT token injection via request interceptor                     │
+│  • Automatic 401 refresh token rotation                             │
+│  • Generic helpers: getList, getById, createItem, updateItem        │
+└──────────────────────┬─────────────────────────────────────────────┘
+                       │
+                       ▼
+┌────────────────────────────────────────────────────────────────────┐
+│                    BACKEND API GATEWAY                              │
+│  /api/v1/profiles · /api/v1/jobs · /api/v1/resumes · ...           │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+### 16.2 State Management Philosophy
+
+| Concern | Technology | Rationale |
+|---------|-----------|-----------|
+| Server state | **React Query** | Caching, dedup, refetch, pagination, optimistic updates — all handle server state lifecycle |
+| Auth state | **React Context** | Simple global auth state (user, tokens), no need for complex state management |
+| UI state | **React useState/useReducer** | Form state, toggles, modals — local to components |
+| URL state | **React Router v6** | Search params, filters, pagination — persisted in URL |
+
+### 16.3 Cache Configuration
+
+```typescript
+// Default React Query configuration
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,        // 30s before re-fetch
+      gcTime: 5 * 60 * 1000,    // 5min garbage collection
+      retry: 2,                  // Retry failed requests twice
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000), // Exponential backoff
+      refetchOnWindowFocus: true,  // Re-fetch on tab focus
+      refetchOnReconnect: true,    // Re-fetch on network recovery
+    },
+    mutations: {
+      retry: 1,
+    },
+  },
+});
+```
+
+**Per-query cache strategies:**
+
+| Query | staleTime | refetchInterval | Notes |
+|-------|-----------|-----------------|-------|
+| Profile | 5 min | — | Rarely changes; manual invalidation on edit |
+| Jobs | 2 min | — | Moderate freshness requirement |
+| Job Matches | 5 min | — | Computed scores are relatively stable |
+| Applications | 30 sec | 60 sec | Near-real-time for status changes |
+| Resume list | 2 min | — | Moderate freshness |
+| Notifications | 30 sec | 30 sec | Near-real-time for alerts |
+| Tracking stats | 1 min | 2 min | Analytics are cached, periodic refresh |
+
+### 16.4 Error Handling Architecture
+
+```
+┌──────────┐          ┌──────────────┐          ┌──────────────┐
+│ API Error │ ────────▶│ Query/Mutation│ ────────▶│ Component    │
+│ (Axios)  │          │ Error Prop    │          │ Error State  │
+└──────────┘          └──────────────┘          └──────────────┘
+                                                        │
+                                              ┌─────────┴─────────┐
+                                              ▼                   ▼
+                                     ┌──────────────┐   ┌──────────────┐
+                                     │ Toast        │   │ Inline Error │
+                                     │ Notification │   │ Message      │
+                                     └──────────────┘   └──────────────┘
+                                                        │
+                                                        ▼
+                                               ┌──────────────┐
+                                               │ Retry Button │
+                                               │ / Fallback   │
+                                               └──────────────┘
+```
+
+**Error Classification & UX Response:**
+
+| HTTP Status | User Message | UX Action |
+|-------------|-------------|-----------|
+| 400 Bad Request | "Please check your input and try again." | Show field-level validation errors |
+| 401 Unauthorized | "Your session has expired." | Auto-refresh token; redirect to login if refresh fails |
+| 403 Forbidden | "You don't have permission to perform this action." | Hide action, show explanation |
+| 404 Not Found | "The requested resource was not found." | Show 404 page with navigation options |
+| 409 Conflict | "This resource already exists." | Show conflict details, suggest merge/edit |
+| 422 Validation | "Please fix the highlighted fields." | Highlight invalid fields with error messages |
+| 429 Rate Limited | "Too many requests. Please wait a moment." | Show cooldown timer, disable submit button |
+| 500 Server Error | "Something went wrong on our end." | Retry button, auto-retry once with delay |
+| 503 Unavailable | "Service is temporarily unavailable." | Show maintenance banner, disable actions |
+| Network Error | "No internet connection." | Show offline banner, save draft locally, retry on reconnect |
+| Timeout | "The request is taking longer than expected." | Cancel on timeout, show retry option |
+
+### 16.5 Loading State Architecture
+
+| State | Component | Description |
+|-------|-----------|-------------|
+| **Initial Load** | Skeleton loaders | Gray animated placeholders matching page layout |
+| **Refetch** | Subtle spinner | Background refresh with existing data visible |
+| **Mutation in progress** | Optimistic UI + spinner | Update UI immediately, show spinner on affected element |
+| **Pagination** | Infinite scroll / Load More | Fetch next page while keeping current items |
+| **File Upload** | Progress bar | Show percentage complete for PDF generation |
+
+### 16.6 Real Data Migration Strategy
+
+**Phase 1 — Service Layer First (No UI changes):**
+- All API service files exist with typed interfaces
+- Axios client configured with JWT auth and interceptors
+- React Query hooks ready with proper cache configuration
+- Backend mock/stub endpoints for development
+
+**Phase 2 — Component Migration (Replace mock data):**
+- Replace hardcoded `mockJobs`, `mockApps`, etc. with React Query hooks
+- Add skeleton loading states for each page
+- Add error boundaries and fallback UI
+- Add empty states for zero-data scenarios
+
+**Phase 3 — Mutation Integration (Write operations):**
+- Replace local state mutations with React Query mutations
+- Add optimistic updates for instant UI feedback
+- Add mutation error rollback logic
+- Invalidate related queries on success
+
+**Phase 4 — Edge Case Hardening:**
+- Comprehensive error handling for all API interactions
+- Token refresh race condition handling
+- Stale-while-revalidate for background updates
+- Race condition prevention for double-submits
+
+---
+
 ## 16. Monitoring & Observability
 
 ### 16.1 Logging
@@ -1643,6 +1813,8 @@ services:
 
 ## 17. Phase Roadmap
 
+### 17.1 Core Phases (Backend + Initial Frontend)
+
 | Phase | Features | Dependencies |
 |-------|----------|-------------|
 | **P1: Foundation** | User profile CRUD, master resume generation, PDF export, basic dashboard | PostgreSQL, Redis, FastAPI, React |
@@ -1655,6 +1827,25 @@ services:
 | **P8: Automation & Scale** | One-click apply, batch apply, Celery worker scaling, performance optimization | All services |
 | **P9: Career Intelligence** | Missing skill detection, career path recommendations, interview prep | AI Orchestrator (Career Intelligence Agent) |
 | **P10: Browser Agent** | Automated form filling on job portals, auto-apply | Browser automation framework |
+
+### 17.2 Frontend Real Data Integration Phases
+
+| Phase | Features | Dependencies |
+|-------|----------|-------------|
+| **P11: Frontend Real Data Integration** | Replace all mock/sample data with live API calls, loading states, error handling, skeleton UI, mutation UX | All backend services (P1–P10), React Query, Axios |
+| **P12: Frontend Edge Case Hardening** | Comprehensive error boundaries, offline support, optimistic updates rollback, race condition mitigation, stale data handling | P11 completed |
+| **P13: Frontend Performance & Polish** | Virtual list for large datasets, code splitting, bundle optimization, responsive polish, animation refinement, accessibility audit | P12 completed |
+| **P14: Frontend Testing & QA** | Unit tests, integration tests (MSW), E2E tests (Playwright), component storybook, visual regression tests | P13 completed |
+| **P15: Advanced Frontend Features** | Real-time WebSocket updates, offline PWA support, push notifications, keyboard shortcuts, dark mode, i18n | P14 completed |
+
+### 17.3 Future Phases
+
+| Phase | Features | Dependencies |
+|-------|----------|-------------|
+| **P16: Career Intelligence Agent** | Missing skill detection and learning path recommendations, interview preparation | AI Orchestrator (Career Intelligence Agent) |
+| **P17: Browser Automation Agent** | Auto-fill job application forms on external portals, one-click apply, headless browser integration | Browser automation framework |
+| **P18: Advanced AI Features** | RAG-based semantic job search (Qdrant/Weaviate vector DB), resume A/B testing, salary prediction | Vector database, AI Orchestrator |
+| **P19: Enterprise Features** | Multi-user teams, SSO/SAML, audit logging, admin dashboard | All services |
 
 ---
 
@@ -1669,6 +1860,8 @@ services:
 | Resume generation speed | <30 seconds | AI execution logs |
 | ATS score improvement | >20% | Before/after comparison |
 | Time saved per user per week | >10 hours | User surveys + analytics |
+| Page load time (p95) | <2 seconds | Frontend performance monitoring |
+| API error rate in UI | <1% | Client-side error tracking |
 
 ### 18.2 Technical KPIs
 
@@ -1681,6 +1874,8 @@ services:
 | Platform uptime | 99.9% | Monitoring |
 | AI cost per application | <$0.10 | AI execution logs |
 | Queue processing latency (p95) | <5 seconds | Celery monitoring |
+| API response time (p95) | <500ms | Frontend performance monitoring |
+| Token refresh success rate | >99.5% | Auth service logs |
 
 ---
 
@@ -1697,6 +1892,8 @@ services:
 | SQL vs NoSQL for profile | PostgreSQL | Strong schema, relations, JSONB for flexibility |
 | File storage | MinIO | S3-compatible, fully self-hosted, no AWS dependency |
 | LLM provider choice | Gemini API (primary) + Groq API (fallback) | Gemini for primary inference; Groq (Llama/Mixtral on LPU) as fast fallback — both generous free tiers |
+| Frontend state management | React Query + Context | Server state handled by React Query; simple auth context; no Redux overhead |
+| Data fetching pattern | Custom hooks wrapping React Query | Encapsulation of query config, cache keys, and refetch logic; components stay thin |
 
 ### B. Error Handling Strategy
 
@@ -1725,10 +1922,14 @@ services:
 | **Application Package** | Assembled set of resume PDF + cover letter + email |
 | **Job Match Score** | Numerical score (0-100) indicating profile-job fit |
 | **AI Agent** | Specialized AI module that performs a specific career task |
+| **React Query** | TanStack Query — server state management library for async data fetching, caching, and mutations |
+| **Optimistic Update** | UI pattern that immediately reflects a mutation result before server confirmation, with rollback on failure |
+| **Skeleton UI** | Animated placeholder components that render while data is loading |
+| **Stale-While-Revalidate** | Cache strategy that serves stale data immediately while re-fetching in the background |
 
 ---
 
-> **Document Version:** 1.0  
+> **Document Version:** 1.1  
 > **Author:** Architecture Team  
-> **Last Updated:** June 11, 2026  
-> **Next Review:** Phase 1 completion
+> **Last Updated:** June 18, 2026  
+> **Next Review:** Phase 11 (Frontend Real Data Integration) completion

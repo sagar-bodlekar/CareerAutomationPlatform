@@ -71,8 +71,13 @@ Each phase contains:
 | **P8** | Frontend Dashboard | 2.5 | React Dashboard (all pages) | P2–P7 |
 | **P9** | Email Delivery & Tracking | 1.5 | Delivery, Tracking, Notification | P7, P8 |
 | **P10** | Polish & Scale | 1 | Monitoring, perf, docs | All |
+| **P11** | Frontend Real Data Integration | 3 | Replace mock data, loading states, error handling, mutations | P1–P10 (all backend APIs) |
+| **P12** | Frontend Edge Case Hardening | 2 | Error boundaries, offline support, race conditions, stale data | P11 |
+| **P13** | Frontend Performance & Polish | 1.5 | Virtual lists, code splitting, accessibility, responsive | P12 |
+| **P14** | Frontend Testing & QA | 2 | Unit tests, MSW integration tests, Playwright E2E | P13 |
+| **P15** | Advanced Frontend Features | 2 | WebSocket real-time, PWA offline, push notifications, i18n | P14 |
 
-**Total: ~15 weeks full-time.**
+**Total: ~27 weeks full-time.**
 
 ---
 
@@ -1721,29 +1726,850 @@ CONTRIBUTING.md
 
 ---
 
-## 14. Future Phases
+## 14. Phase 11: Frontend Real Data Integration
+
+**Goal:** Replace all hardcoded mock/sample data in every frontend page with live API calls via React Query hooks, complete with loading states, error handling, and mutation UX.
+
+**Services Involved:** Frontend (all pages, hooks, services), All Backend Services (API validation)
+
+**Dependencies:** Phases 1–10 (all backend APIs operational)
+
+**Current State:** All frontend pages use hardcoded `mockJobs`, `mockApps`, `mockResumes`, `mockProfile` data arrays. Service files and hooks exist but are not yet consumed by pages.
+
+**Target State:** Every page fetches real data from the backend. Loading skeletons, error states, and empty states replace mock data displays.
+
+---
+
+### Sprint 11.1: API Service Layer Hardening
+
+**Estimated Time:** 6 hours
+
+**Tasks:**
+
+- [ ] Audit all service files (`services/*.ts`) for correctness:
+  - Verify all endpoint paths match backend route definitions
+  - Ensure all request/response types match Pydantic schemas
+  - Add missing service functions for endpoints that exist in backend
+- [ ] Harden `api.ts` Axios client:
+  - Add retry logic for network failures (not auth failures)
+  - Add request timeout configuration (30s default, 120s for file uploads)
+  - Add correlation ID header (`X-Request-ID`) for tracing
+  - Add response interceptor for global error logging (console.error → logging service)
+- [ ] Add `useMutation` hooks for all write operations:
+  - `useCreateApplication` → optimistic add to list
+  - `useSubmitApplication` → invalidate application list + detail
+  - `useGenerateResume` → show generation progress
+  - `useOptimizeResume` → show ATS score update
+  - `useGenerateCoverLetter` → preview before save
+- [ ] Create shared error handling utilities:
+  - `getErrorMessage(error)` — parse Axios error → user-friendly message
+  - `isNetworkError(error)` — detect offline/network issues
+  - `handleMutationError(error, toast)` — display toast with retry option
+- [ ] Create shared loading state components:
+  - `PageSkeleton` — full-page placeholder
+  - `CardSkeleton` — card/list item placeholder
+  - `TableSkeleton` — table row placeholders
+  - `FormSkeleton` — form field placeholders
+
+**Files to create/modify:**
+```
+frontend/src/services/api.ts                          (harden intersectors, add retry)
+frontend/src/services/auth.ts                         (verify endpoint paths)
+frontend/src/services/profiles.ts                     (verify types, add missing fns)
+frontend/src/services/jobs.ts                         (verify types, add missing fns)
+frontend/src/services/resumes.ts                      (verify types, add missing fns)
+frontend/src/services/applications.ts                 (verify types, add missing fns)
+frontend/src/services/matches.ts                      (verify types, add missing fns)
+frontend/src/services/outreach.ts                     (verify types, add missing fns)
+frontend/src/services/tracking.ts                     (verify types, add missing fns)
+frontend/src/services/notifications.ts                (verify types, add missing fns)
+frontend/src/utils/errorHandler.ts                    (NEW — error parsing utilities)
+frontend/src/utils/networkStatus.ts                   (NEW — online/offline detection)
+frontend/src/components/common/PageSkeleton.tsx        (NEW)
+frontend/src/components/common/CardSkeleton.tsx        (NEW)
+frontend/src/components/common/ErrorFallback.tsx       (NEW)
+frontend/src/components/common/RetryButton.tsx         (NEW)
+```
+
+---
+
+### Sprint 11.2: Page-by-Page Mock Data Migration (Read Operations)
+
+**Estimated Time:** 16 hours
+
+**Tasks:**
+
+**Page: ProfilePage**
+- [ ] Replace `mockProfile` with `useProfile(id)` hook
+- [ ] Add `PageSkeleton` while profile loads
+- [ ] Add error state with retry button if profile fetch fails
+- [ ] Add empty state: "Complete your profile to get started" with onboarding CTA
+- [ ] Wire skills, experience, education, projects from real data
+
+**Page: ProfileEditPage**
+- [ ] Replace local form state with `useProfile(id)` → form population
+- [ ] Wire save to `useUpdateProfile(id)` mutation
+- [ ] Add success toast after save
+- [ ] Add unsaved changes warning on navigation
+- [ ] Add field-level validation errors from server in form display
+
+**Page: JobsPage**
+- [ ] Replace `mockJobs` with `useJobs(filters)` hook
+- [ ] Wire search input to query filter (debounced, 300ms)
+- [ ] Wire filter panel to query params (location_type, employment_type, salary range)
+- [ ] Add `CardSkeleton` for loading job cards
+- [ ] Add empty state: "No jobs match your filters. Try broadening your search."
+- [ ] Add pagination (load more / infinite scroll)
+
+**Page: JobDetailPage**
+- [ ] Replace mock data with `useJob(id)` hook
+- [ ] Add match score via `useMatchScore(profileId, jobId)`
+- [ ] Add skill gap display via `useSkillGaps(profileId, jobId)`
+- [ ] Add loading skeleton for job details
+- [ ] Wire "Apply" button to create application draft
+
+**Page: ResumesPage**
+- [ ] Replace `mockResumes` with `useResumes(profileId)` hook
+- [ ] Add card skeletons while loading
+- [ ] Add empty state: "No resumes yet. Generate your first resume."
+- [ ] Wire ATS score display from real data
+- [ ] Wire "Download PDF" to `getResumeDownloadUrl(id)`
+
+**Page: ResumeDetailPage**
+- [ ] Replace mock data with `useResume(id)` hook
+- [ ] Wire "Optimize" button to `useOptimizeResume()` mutation
+- [ ] Show ATS score with before/after comparison on optimization
+- [ ] Add loading states for PDF download
+
+**Page: ResumeGeneratePage**
+- [ ] Wire template selector to `useTemplates()` hook
+- [ ] Wire role selection and generation to `useGenerateResume()` mutation
+- [ ] Add generation progress indicator
+- [ ] Show preview when generation completes
+
+**Page: ApplicationsPage**
+- [ ] Replace `mockApps` with `useApplications(profileId, status)` hook
+- [ ] Wire filter tabs to status query param
+- [ ] Add card skeletons while loading
+- [ ] Add empty state: "No applications yet. Start by matching with jobs."
+- [ ] Show real progress percentage from backend
+
+**Page: ApplicationDetailPage**
+- [ ] Replace mock data with `useApplication(id)` hook
+- [ ] Wire timeline events via `useApplicationEvents(id)`
+- [ ] Wire "Submit" button to `useSubmitApplication()` mutation
+- [ ] Wire "Retry" button for failed deliveries
+- [ ] Show real delivery status from backend
+
+**Page: DashboardPage**
+- [ ] Replace hardcoded stats with `useTrackingStats(profileId)` hook
+- [ ] Replace hardcoded activity feed with `useRecentActivity(profileId)`
+- [ ] Add stat card skeletons while loading
+- [ ] Show welcome message with real user data
+
+**Page: TrackingPage / AnalyticsPage**
+- [ ] Wire funnel visualization to `useFunnel(profileId)`
+- [ ] Wire stats to `useTrackingStats(profileId)`
+- [ ] Wire daily trends chart to `useDailyTrends(profileId)`
+- [ ] Wire source breakdown to `useAnalytics(profileId)`
+- [ ] Add chart skeletons while loading
+
+**Page: NotificationsPage**
+- [ ] Wire to `useNotifications(userId)` hook
+- [ ] Wire mark-as-read to `useMarkAsRead()` mutation
+- [ ] Wire mark-all-as-read to `useMarkAllAsRead()` mutation
+- [ ] Add real-time polling (30s interval already configured)
+- [ ] Add empty state: "No notifications yet"
+
+**Page: SkillsPage**
+- [ ] Replace mock skills with `useProfile(id)` skills data
+- [ ] Wire skill add/update/delete to mutations
+- [ ] Add proficiency level selector
+
+**Files to modify:**
+```
+frontend/src/pages/ProfilePage.tsx
+frontend/src/pages/ProfileEditPage.tsx
+frontend/src/pages/JobsPage.tsx
+frontend/src/pages/JobDetailPage.tsx
+frontend/src/pages/ResumesPage.tsx
+frontend/src/pages/ResumeDetailPage.tsx
+frontend/src/pages/ResumeGeneratePage.tsx
+frontend/src/pages/ApplicationsPage.tsx
+frontend/src/pages/ApplicationDetailPage.tsx
+frontend/src/pages/DashboardPage.tsx
+frontend/src/pages/TrackingPage.tsx
+frontend/src/pages/AnalyticsPage.tsx
+frontend/src/pages/NotificationsPage.tsx
+frontend/src/pages/SkillsPage.tsx
+```
+
+---
+
+### Sprint 11.3: Mutation Integration (Write Operations)
+
+**Estimated Time:** 10 hours
+
+**Tasks:**
+
+- [ ] Implement optimistic updates for all mutations:
+  - Create application: immediately show in list, rollback on error
+  - Update profile: immediately reflect changes, rollback on error
+  - Mark notification read: toggle immediately, rollback on error
+  - Submit application: show progress state immediately
+- [ ] Add mutation loading indicators:
+  - Button loading spinners during save/submit
+  - Disable submit buttons while mutation in progress
+  - Show "Saving..." / "Submitting..." text
+- [ ] Add success feedback:
+  - Success toast after mutation completes
+  - Auto-dismiss after 3 seconds
+- [ ] Add error feedback:
+  - Error toast with mutation error message
+  - Show retry button in toast for transient errors
+  - Auto-dismiss after 8 seconds
+- [ ] Implement mutation rollback:
+  - On mutation failure, revert optimistic update
+  - Show "Changes could not be saved" warning
+  - Preserve user's unsaved changes in form
+- [ ] Add double-submit prevention:
+  - Disable buttons during mutation (isPending)
+  - Debounce rapid clicks on submit buttons
+  - Idempotency keys for critical mutations (send application)
+
+**Files to modify:**
+```
+frontend/src/hooks/useProfile.ts          (add optimistic update)
+frontend/src/hooks/useApplications.ts     (add optimistic update)
+frontend/src/hooks/useNotifications.ts    (add optimistic update)
+frontend/src/hooks/useResumes.ts          (add generation progress)
+frontend/src/components/common/Layout.tsx  (add toast container)
+frontend/src/components/applications/SubmitButton.tsx  (add loading state, debounce)
+```
+
+---
+
+### Sprint 11.4: Integration Testing with Real Data
+
+**Estimated Time:** 6 hours
+
+**Tasks:**
+
+- [ ] Set up MSW (Mock Service Worker) for API mocking in tests:
+  - Configure MSW handlers matching all backend endpoints
+  - Return realistic sample data from handlers
+  - Simulate error responses for error state testing
+- [ ] Write integration tests for each page:
+  - Test loading state renders skeleton
+  - Test data state renders correctly
+  - Test error state renders error message + retry button
+  - Test empty state renders empty message + CTA
+- [ ] Write mutation tests:
+  - Test successful mutation updates UI
+  - Test failed mutation shows error + rollback
+  - Test double-submit prevention
+- [ ] Write auth flow integration tests:
+  - Test login → token storage → API calls include token
+  - Test expired token → refresh → retry
+  - Test refresh failure → redirect to login
+- [ ] Set up Playwright for E2E testing:
+  - Configure browser, base URL, test user
+  - Write critical path E2E test: register → login → view dashboard → create profile → search jobs → apply
+  - Write error path test: network down → show offline banner → reconnect → data reloads
+
+**Files to create/modify:**
+```
+frontend/src/test-setup.ts                        (add MSW setup)
+frontend/src/mocks/handlers.ts                    (NEW — MSW request handlers)
+frontend/src/mocks/server.ts                      (NEW — MSW server config)
+frontend/src/mocks/data.ts                        (NEW — realistic mock data for tests)
+frontend/src/__tests__/ApplicationsPage.test.tsx  (add integration tests)
+frontend/src/__tests__/DashboardPage.test.tsx     (add integration tests)
+frontend/src/__tests__/JobsPage.test.tsx          (add integration tests)
+frontend/src/__tests__/notifications.test.tsx     (add integration tests)
+frontend/src/__tests__/ProfilePage.test.tsx       (add integration tests)
+frontend/src/__tests__/ResumesPage.test.tsx       (add integration tests)
+frontend/src/__tests__/AuthFlow.test.tsx          (add auth integration tests)
+frontend/e2e/                                    (NEW — Playwright tests)
+frontend/e2e/critical-path.spec.ts               (NEW)
+frontend/e2e/error-scenarios.spec.ts             (NEW)
+frontend/playwright.config.ts                    (NEW)
+```
+
+---
+
+### Phase 11 Verification Checklist
+
+- [ ] Dashboard shows real stats from backend (not hardcoded numbers)
+- [ ] All pages render skeleton loading states while data fetches
+- [ ] All pages show error state with retry button on API failure
+- [ ] All pages show appropriate empty state when no data exists
+- [ ] Profile editor saves data to backend, shows success/failure feedback
+- [ ] Job search returns real results, filters work end-to-end
+- [ ] Resume generation triggers backend task, shows progress
+- [ ] Application status reflects real delivery events
+- [ ] Create/submit application mutation shows loading + success states
+- [ ] Optimistic updates provide instant UI feedback
+- [ ] Double-submit prevention works (rapid clicks = single request)
+- [ ] Auth token refresh works transparently (no data loss)
+- [ ] Network down shows offline banner, data reloads on reconnect
+- [ ] All MSW integration tests pass: `npx vitest run`
+- [ ] Critical path E2E test passes: `npx playwright test`
+- [ ] No hardcoded mock data arrays remain in any page file
+
+---
+
+## 15. Phase 12: Frontend Edge Case Hardening
+
+**Goal:** Fortify the frontend against all known edge cases: race conditions, stale data, offline resilience, error boundary propagation, and cache invalidation.
+
+**Services Involved:** Frontend (all layers), Backend (webhook delivery)
+
+**Dependencies:** Phase 11 completed
+
+---
+
+### Sprint 12.1: Error Boundaries & Graceful Degradation
+
+**Estimated Time:** 6 hours
+
+**Tasks:**
+
+- [ ] Implement React Error Boundary at router level:
+  - `AppErrorBoundary` — catches unhandled render errors
+  - Shows user-friendly fallback UI with "Reload" button
+  - Logs error details to console/reporting service
+  - Does NOT break navigation (other routes remain functional)
+- [ ] Implement per-page error boundaries for critical sections:
+  - Dashboard stats section can fail independently of activity feed
+  - Job list can fail independently of filter panel
+  - Application detail timeline can fail independently of header
+- [ ] Implement 404 handling:
+  - Not-found route with friendly message and navigation links
+  - Resource-not-found (profile, job, resume, application) with guidance
+- [ ] Implement offline resilience:
+  - Detect network status via `navigator.onLine` + API heartbeat
+  - Show persistent offline banner: "You are offline. Some features may be unavailable."
+  - Queue mutations in local storage for replay when online
+  - Auto-retry failed mutations on reconnect
+- [ ] Implement API version mismatch detection:
+  - Check response headers for `X-API-Version`
+  - Show deprecation warning if version differs
+  - Force reload if API version is incompatible
+
+**Files to create/modify:**
+```
+frontend/src/components/common/AppErrorBoundary.tsx       (NEW)
+frontend/src/components/common/SectionErrorBoundary.tsx   (NEW)
+frontend/src/components/common/OfflineBanner.tsx          (NEW)
+frontend/src/components/common/ApiVersionBanner.tsx       (NEW)
+frontend/src/hooks/useNetworkStatus.ts                    (NEW)
+frontend/src/hooks/useApiVersion.ts                       (NEW)
+frontend/src/App.tsx                                      (add error boundary)
+```
+
+---
+
+### Sprint 12.2: Race Condition & Stale Data Prevention
+
+**Estimated Time:** 6 hours
+
+**Tasks:**
+
+- [ ] Prevent stale data display:
+  - Configure query stale times per data type (see Architecture Section 16.3)
+  - Invalidate queries on mutation success (automatic via React Query)
+  - Add `refetchOnMount: true` for frequently-changing data
+  - Add background refetch indicators (subtle dot or timestamp)
+- [ ] Prevent race conditions in mutations:
+  - Use mutation keys to cancel pending mutations
+  - Implement `useIsMutating` to show global saving indicator
+  - Serialize dependent mutations (e.g., create profile → create resume)
+- [ ] Prevent race conditions in parallel requests:
+  - Use `Promise.allSettled` instead of `Promise.all` for independent requests
+  - Handle partial failures gracefully
+- [ ] Prevent race conditions with auth:
+  - Queue API calls while token refresh is in progress
+  - Cancel pending requests on logout
+  - Dedup simultaneous refresh token requests
+- [ ] Implement request deduplication:
+  - React Query handles this via `queryKey` dedup
+  - Ensure duplicate API calls are not made for same data
+
+**Files to create/modify:**
+```
+frontend/src/services/api.ts                      (add token refresh queue)
+frontend/src/hooks/useAuth.ts                     (add request cancellation on logout)
+frontend/src/hooks/useProfile.ts                  (add invalidation on mutation)
+frontend/src/components/common/SavingIndicator.tsx (NEW)
+```
+
+---
+
+### Sprint 12.3: Cache Invalidation & Reconciliation
+
+**Estimated Time:** 4 hours
+
+**Tasks:**
+
+- [ ] Define cache invalidation rules for each mutation:
+  - Create application → invalidate ['applications'] + ['tracking', 'stats']
+  - Update profile → invalidate ['profile'] + ['resumes'] (resumes depend on profile)
+  - Submit application → invalidate ['application', id] + ['applications']
+  - Mark notification read → invalidate ['notifications', 'unread']
+  - Generate resume → invalidate ['resumes'] + ['resume', newId]
+- [ ] Implement optimistic cache updates for list queries:
+  - After create, prepend new item to cached list (avoid full refetch)
+  - After update, update item in cached list in-place
+  - After delete, remove item from cached list
+- [ ] Add stale data indicators:
+  - Show "Last updated: X min ago" timestamp
+  - Subtle blue dot when background refresh is in progress
+  - Warning banner if data is >15 min stale without refresh
+- [ ] Implement periodic reconciliation:
+  - Dashboard stats refresh every 60 seconds
+  - Application status poll every 30 seconds
+  - Notification count poll every 15 seconds
+
+**Files to modify:**
+```
+frontend/src/hooks/useApplications.ts     (add cache invalidation rules)
+frontend/src/hooks/useProfile.ts          (add cache invalidation rules)
+frontend/src/hooks/useResumes.ts          (add cache invalidation rules)
+frontend/src/hooks/useNotifications.ts    (add cache invalidation rules)
+frontend/src/hooks/useTracking.ts         (add cache invalidation rules)
+frontend/src/hooks/useJobs.ts             (add cache invalidation rules)
+```
+
+---
+
+### Sprint 12.4: Token & Auth Resilience
+
+**Estimated Time:** 4 hours
+
+**Tasks:**
+
+- [ ] Implement token refresh queue (prevent concurrent refresh attempts):
+  - Lock mechanism: while one refresh is in progress, queue other requests
+  - After refresh completes, replay all queued requests
+  - If refresh fails, clear queue and redirect to login
+- [ ] Implement silent token refresh:
+  - Pre-emptively refresh token 2 minutes before expiry
+  - Use setTimeout on login to schedule pre-emptive refresh
+  - No interruption to user experience
+- [ ] Handle edge cases:
+  - Refresh token stolen/reused → rotate all tokens, force re-login
+  - Multi-tab session management → sync logout across tabs via `storage` event
+  - Token expired mid-mutation → retry entire mutation after refresh
+
+**Files to modify:**
+```
+frontend/src/services/api.ts         (add token refresh queue)
+frontend/src/context/AuthContext.tsx (add multi-tab sync, pre-emptive refresh)
+```
+
+---
+
+### Phase 12 Verification Checklist
+
+- [ ] Error boundary catches render errors without breaking navigation
+- [ ] Offline banner appears on network disconnection
+- [ ] Data auto-refreshes when network reconnects
+- [ ] Stale data indicator shows last-updated timestamp
+- [ ] Cache invalidates correctly after each mutation
+- [ ] Optimistic cache updates work (no full refetch needed on create)
+- [ ] Token refresh never causes duplicate concurrent refresh requests
+- [ ] Multi-tab logout works (logging out in one tab logs out all)
+- [ ] Mutations queued when offline replay on reconnect
+- [ ] 404 page shows for unknown routes
+- [ ] Section-level error boundaries isolate failures
+
+---
+
+## 16. Phase 13: Frontend Performance & Polish
+
+**Goal:** Optimize frontend performance through code splitting, virtual lists, bundle optimization, and accessibility improvements.
+
+**Services Involved:** Frontend
+
+**Dependencies:** Phase 12 completed
+
+---
+
+### Sprint 13.1: Performance Optimization
+
+**Estimated Time:** 6 hours
+
+**Tasks:**
+
+- [ ] Implement code splitting:
+  - Lazy-load all page components with `React.lazy()` + `Suspense`
+  - Route-based code splitting: each page is a separate chunk
+  - Add loading fallback for each chunk (minimal spinner)
+- [ ] Implement virtual scrolling for large lists:
+  - Replace job list with `react-window` or `@tanstack/virtual`
+  - Replace application list with virtualized list
+  - Handle dynamic row heights for variable content
+- [ ] Optimize bundle size:
+  - Analyze bundle with `vite-bundle-visualizer`
+  - Remove unused imports and dead code
+  - Tree-shake icon libraries (import individual icons, not barrels)
+  - Use dynamic imports for heavy libraries (date-fns, chart libraries)
+- [ ] Implement image optimization:
+  - Company logos: lazy load with placeholder
+  - Avatar images: resize to thumbnail on upload
+  - Use WebP format where supported
+- [ ] Add performance monitoring:
+  - Report Core Web Vitals (LCP, FID, CLS)
+  - Track API call durations client-side
+  - Log long tasks (>50ms) for UI thread analysis
+
+**Files to create/modify:**
+```
+frontend/src/App.tsx                             (add lazy loading + Suspense)
+frontend/src/components/jobs/VirtualJobList.tsx   (NEW — virtualized job list)
+frontend/src/components/applications/VirtualAppList.tsx  (NEW — virtualized app list)
+frontend/src/utils/performance.ts                 (NEW — performance monitoring)
+frontend/vite.config.ts                           (add bundle analysis)
+```
+
+---
+
+### Sprint 13.2: UI Polish & Responsiveness
+
+**Estimated Time:** 6 hours
+
+**Tasks:**
+
+- [ ] Add micro-interactions:
+  - Hover states on all clickable elements (cards, buttons, links)
+  - Transition animations on page load (fade-in staggered)
+  - Loading shimmer animations on skeletons
+  - Success checkmark animation on mutations
+  - Smooth progress bar transitions
+- [ ] Ensure full mobile responsiveness:
+  - Test and fix all pages at 320px, 375px, 768px, 1024px breakpoints
+  - Convert desktop layouts to stacked mobile layouts
+  - Ensure touch targets are ≥44px
+  - Test horizontal scroll issues on all pages
+- [ ] Implement dark mode (optional but valuable):
+  - CSS custom properties for theme colors
+  - `prefers-color-scheme` media query detection
+  - Manual toggle with localStorage persistence
+  - Dark mode variants for all components
+- [ ] Accessibility audit:
+  - Add `aria-label` to all icon buttons
+  - Ensure proper heading hierarchy (h1 → h2 → h3)
+  - Add `role` attributes to interactive elements
+  - Keyboard navigation support (Tab, Enter, Escape)
+  - Focus trapping in modals
+  - Color contrast ratio ≥4.5:1 for all text
+  - Screen reader announcements for dynamic content changes
+- [ ] Add `document.title` updates per page
+
+**Files to modify:**
+```
+frontend/src/index.css                       (add dark mode variables, animations)
+frontend/src/context/ThemeContext.tsx         (NEW — dark mode context)
+frontend/src/components/common/Navbar.tsx    (add dark mode toggle, accessibility)
+frontend/src/components/common/Layout.tsx    (add skip-to-content link)
+frontend/src/pages/*.tsx                     (add document.title, accessibility)
+```
+
+---
+
+### Phase 13 Verification Checklist
+
+- [ ] Page load time (p95) < 2 seconds (measured)
+- [ ] Lighthouse score >= 90 for Performance, Accessibility, Best Practices
+- [ ] Code splitting loads pages on demand (verify in Network tab)
+- [ ] Virtual list renders 1000+ items without frame drops
+- [ ] Mobile layout works at 320px width
+- [ ] All touch targets ≥44px on mobile
+- [ ] Dark mode toggle works, persists across sessions
+- [ ] Keyboard navigation: Tab through all interactive elements
+- [ ] Screen reader announces page title and content changes
+- [ ] Bundle size < 200KB initial JS (gzipped)
+
+---
+
+## 17. Phase 14: Frontend Testing & QA
+
+**Goal:** Comprehensive test coverage across unit, integration, and E2E levels.
+
+**Services Involved:** Frontend
+
+**Dependencies:** Phase 13 completed
+
+---
+
+### Sprint 14.1: Unit Tests
+
+**Estimated Time:** 6 hours
+
+**Tasks:**
+
+- [ ] Write unit tests for all utility functions:
+  - `formatters.ts` — date formatting, salary formatting, percentage formatting
+  - `validators.ts` — email validation, URL validation, phone validation
+  - `errorHandler.ts` — error message parsing for each HTTP status
+- [ ] Write unit tests for all service functions (using MSW):
+  - Each function tested with: success response, 400, 401, 404, 500
+  - Verify correct URL, method, headers, body
+  - Verify response parsing
+- [ ] Write unit tests for all custom hooks:
+  - Test loading state, data state, error state for each query
+  - Test mutation success, mutation error, mutation loading states
+  - Test query invalidation on mutation success
+- [ ] Write component unit tests:
+  - JobCard: renders all fields, handles missing data
+  - StatusBadge: renders correct color for each status
+  - MatchScoreBadge: renders correct color for score ranges
+  - Skeleton components: renders correct number of placeholders
+
+**Files to create:**
+```
+frontend/src/__tests__/utils/formatters.test.ts
+frontend/src/__tests__/utils/validators.test.ts
+frontend/src/__tests__/utils/errorHandler.test.ts
+frontend/src/__tests__/services/profiles.test.ts
+frontend/src/__tests__/services/jobs.test.ts
+frontend/src/__tests__/services/auth.test.ts
+frontend/src/__tests__/hooks/useProfile.test.ts
+frontend/src/__tests__/hooks/useJobs.test.ts
+frontend/src/__tests__/hooks/useApplications.test.ts
+frontend/src/__tests__/components/JobCard.test.tsx
+frontend/src/__tests__/components/StatusBadge.test.tsx
+frontend/src/__tests__/components/Skeleton.test.tsx
+```
+
+---
+
+### Sprint 14.2: E2E Testing with Playwright
+
+**Estimated Time:** 8 hours
+
+**Tasks:**
+
+- [ ] Set up Playwright with Docker for CI:
+  - Browser configurations (Chromium, Firefox, WebKit)
+  - Test user seeding script
+  - CI integration (GitHub Actions)
+- [ ] Write critical path E2E tests:
+  - User registration → email verification → login
+  - Profile creation → add skills → add experience → save
+  - Job search → filter → view details → create application
+  - Resume generation → select template → generate → download PDF
+  - Application submit → track status → view timeline
+- [ ] Write error scenario E2E tests:
+  - Submit form with invalid data → validation errors appear
+  - Navigate to non-existent page → 404 shows
+  - Try to access protected route while logged out → redirect to login
+  - API 500 → error boundary shows with retry
+- [ ] Write edge case E2E tests:
+  - Empty profile → prompts to complete profile
+  - No jobs match filters → empty state message
+  - Application with all statuses → timeline renders correctly
+  - Rapid double-click on submit → single request (idempotent)
+- [ ] Write visual regression tests:
+  - Screenshot comparison for each page
+  - Responsive layout screenshots at multiple breakpoints
+  - Dark mode screenshots
+
+**Files to create:**
+```
+frontend/e2e/critical-path.spec.ts
+frontend/e2e/error-scenarios.spec.ts
+frontend/e2e/edge-cases.spec.ts
+frontend/e2e/visual-regression.spec.ts
+frontend/e2e/seed.ts                        (test data seeding)
+frontend/e2e/global-setup.ts                (auth setup for tests)
+```
+
+---
+
+### Phase 14 Verification Checklist
+
+- [ ] Unit test coverage >= 80% for utility functions
+- [ ] All service functions tested with success, 400, 401, 404, 500 responses
+- [ ] All hooks tested for loading → success → error state transitions
+- [ ] Critical path E2E test passes on Chromium, Firefox, WebKit
+- [ ] Error scenario E2E tests cover all error types
+- [ ] Visual regression tests detect UI changes
+- [ ] Test suite runs in CI pipeline
+- [ ] E2E tests complete in <5 minutes total
+
+---
+
+## 18. Phase 15: Advanced Frontend Features
+
+**Goal:** Add real-time updates, offline PWA support, push notifications, internationalization.
+
+**Services Involved:** Frontend, Notification Service (WebSocket)
+
+**Dependencies:** Phase 14 completed
+
+---
+
+### Sprint 15.1: Real-Time WebSocket Updates
+
+**Estimated Time:** 6 hours
+
+**Tasks:**
+
+- [ ] Set up WebSocket connection from frontend:
+  - Connect to Notification Service WebSocket endpoint
+  - Auto-reconnect with exponential backoff
+  - Heartbeat/ping interval to keep connection alive
+- [ ] Implement real-time event listeners:
+  - `application.status_changed` → update application card in real-time
+  - `match.found` → show notification + update match count
+  - `resume.generated` → update resume list + enable download
+  - `email.delivered` → update delivery status + timeline
+  - `email.opened` → update timeline with open event
+- [ ] Implement fallback to polling when WebSocket unavailable:
+  - Detect WebSocket connection failure
+  - Fall back to React Query polling (already configured)
+  - Resume WebSocket when connection restores
+- [ ] Add connection status indicator:
+  - Green dot: connected (real-time updates active)
+  - Yellow dot: polling fallback
+  - Red dot: disconnected (showing cached data)
+
+**Files to create/modify:**
+```
+frontend/src/hooks/useWebSocket.ts                    (NEW)
+frontend/src/hooks/useRealtimeApplication.ts          (NEW)
+frontend/src/hooks/useRealtimeNotification.ts         (NEW)
+frontend/src/context/WebSocketContext.tsx              (NEW)
+frontend/src/components/common/ConnectionStatus.tsx    (NEW)
+```
+
+---
+
+### Sprint 15.2: PWA & Offline Support
+
+**Estimated Time:** 8 hours
+
+**Tasks:**
+
+- [ ] Configure PWA manifest:
+  - `manifest.json` with icons, theme colors, display mode
+  - Service worker registration
+  - App install prompt handling
+- [ ] Implement service worker with cache strategies:
+  - Cache-first: static assets (CSS, JS, fonts, images)
+  - Network-first: API responses (with offline fallback to cache)
+  - Stale-while-revalidate: tooltips, icons, reference data
+- [ ] Implement offline support:
+  - Cache last-known-good data for all pages
+  - Show offline indicator with last-sync timestamp
+  - Queue mutations in IndexedDB for later replay
+  - Sync queued mutations when online (in order)
+- [ ] Implement push notifications:
+  - Subscribe to push notifications on login
+  - Handle background push events
+  - Show notification with application status updates
+- [ ] Test PWA features:
+  - Installable via browser prompt
+  - Works offline with cached data
+  - Push notification arrives when app is closed
+  - Background sync replays queued mutations
+
+**Files to create/modify:**
+```
+frontend/public/manifest.json                       (NEW)
+frontend/public/sw.js                               (NEW — service worker)
+frontend/public/icons/                              (NEW — PWA icons)
+frontend/src/main.tsx                               (register service worker)
+frontend/src/hooks/usePushNotifications.ts          (NEW)
+frontend/src/hooks/useBackgroundSync.ts             (NEW)
+frontend/src/services/offlineQueue.ts               (NEW — IndexedDB mutation queue)
+frontend/vite.config.ts                             (add PWA plugin)
+```
+
+---
+
+### Sprint 15.3: Internationalization (i18n)
+
+**Estimated Time:** 6 hours
+
+**Tasks:**
+
+- [ ] Set up i18n framework (react-i18next):
+  - Language detection (browser preference + localStorage)
+  - Translation file structure per language
+  - Fallback to English for missing translations
+- [ ] Extract all user-facing strings:
+  - Labels, buttons, messages, errors
+  - Empty states, tooltips, placeholders
+  - Status names, form validation messages
+- [ ] Create translation files:
+  - `en.json` — English (default, complete)
+  - `es.json` — Spanish
+  - `fr.json` — French
+  - `de.json` — German
+  - `hi.json` — Hindi
+- [ ] Implement language switcher:
+  - Dropdown in user menu
+  - Persist selection in localStorage
+  - Immediate UI update without page reload
+- [ ] Handle right-to-left (RTL) languages:
+  - Detect RTL language selection
+  - Flip layout: margins, paddings, text alignment
+  - Test with Arabic/Hebrew content
+
+**Files to create/modify:**
+```
+frontend/src/i18n/config.ts                          (NEW)
+frontend/src/i18n/locales/en.json                    (NEW)
+frontend/src/i18n/locales/es.json                    (NEW)
+frontend/src/i18n/locales/fr.json                    (NEW)
+frontend/src/i18n/locales/de.json                    (NEW)
+frontend/src/i18n/locales/hi.json                    (NEW)
+frontend/src/components/common/LanguageSwitcher.tsx   (NEW)
+```
+
+---
+
+### Phase 15 Verification Checklist
+
+- [ ] WebSocket connects and receives real-time events
+- [ ] Fallback to polling works when WebSocket disconnects
+- [ ] Connection status indicator shows correct state
+- [ ] PWA installable via browser prompt
+- [ ] Dashboard loads offline with cached data
+- [ ] Queued mutations sync when coming back online
+- [ ] Push notifications appear for application status changes
+- [ ] Language switcher changes all UI text immediately
+- [ ] RTL layout flips correctly for Arabic/Hebrew
+- [ ] All translations complete for at least English + Spanish
+
+---
+
+## 19. Future Phases
 
 These phases extend the platform beyond the core implementation:
 
-### Phase 11: Career Intelligence Agent
+### Phase 16: Career Intelligence Agent
 - Missing skill detection and learning path recommendations
 - Career progression suggestions
 - Interview preparation (generate questions + answer feedback)
 - Integration with learning platforms (Coursera, Udemy — optional)
 
-### Phase 12: Browser Automation Agent
+### Phase 17: Browser Automation Agent
 - Auto-fill job application forms on external portals
 - One-click apply for supported platforms
 - Headless browser integration (Playwright/Selenium)
 - Session management and CAPTCHA handling
 
-### Phase 13: Advanced AI Features
+### Phase 18: Advanced AI Features
 - RAG-based semantic job search (Qdrant/Weaviate vector DB)
 - Resume A/B testing (generate multiple versions, track performance)
 - Salary prediction and negotiation assistance
 - Network analysis (mutual connections at target companies)
 
-### Phase 14: Enterprise Features
+### Phase 19: Enterprise Features
 - Multi-user teams (shared job boards, collaborative applications)
 - SSO/SAML authentication
 - Audit logging for compliance
@@ -1751,7 +2577,63 @@ These phases extend the platform beyond the core implementation:
 
 ---
 
-## 15. Appendix: Quick-Reference Command Cheatsheet
+## 20. Appendix: Quick-Reference Command Cheatsheet
+
+```bash
+# ─── Infrastructure ─────────────────────────────────────
+docker compose up -d                    # Start all services
+docker compose up -d postgres redis minio  # Start only infra
+docker compose logs -f profile-api      # Follow service logs
+docker compose down                     # Stop all services
+
+# ─── Database ───────────────────────────────────────────
+alembic upgrade head                    # Run all migrations
+alembic revision --autogenerate -m "msg"  # Create migration
+psql -h localhost -U postgres -d career_platform  # Connect
+
+# ─── Testing ────────────────────────────────────────────
+pytest backend/profile_service/tests/   # Test single service
+pytest tests/ -v --cov=app              # Test with coverage
+make test                               # Run all tests
+npm test                                # Run frontend tests
+npm run test:integration                # Frontend integration tests
+npm run test:e2e                        # Playwright E2E tests
+
+# ─── Development ────────────────────────────────────────
+cd backend/profile_service && uvicorn app.main:app --reload  # Run service
+cd frontend && npm run dev              # Run frontend
+pip install -r requirements.txt         # Install deps
+
+# ─── Frontend ───────────────────────────────────────────
+npm run dev                             # Start dev server
+npm run build                           # Production build
+npm run preview                         # Preview production build
+npm run analyze                         # Bundle analysis
+npm run lint                            # ESLint
+npm run typecheck                       # TypeScript check
+npm run test                            # Unit + integration tests
+npm run test:coverage                   # Test with coverage report
+npm run test:e2e                        # Playwright E2E tests
+npm run test:e2e:ui                     # Playwright UI mode
+
+# ─── AI ─────────────────────────────────────────────────
+pip install google-genai                # Install Gemini SDK
+pip install openai                       # Install OpenAI SDK (for Groq)
+export GEMINI_API_KEY="your-key-here"  # Set Gemini API key
+export GROQ_API_KEY="your-key-here"    # Set Groq API key
+python -c "from google import genai; client = genai.Client(); print(client.models.generate_content(model='gemini-2.0-flash', contents='Hello'))"  # Test Gemini
+python -c "from openai import OpenAI; client = OpenAI(base_url='https://api.groq.com/openai/v1'); print(client.chat.completions.create(model='llama-3.3-70b-versatile', messages=[{'role':'user','content':'Hello'}]).choices[0].message.content)"  # Test Groq
+
+# ─── Service Scaffolding ────────────────────────────────
+bash backend/scripts/create_service.sh my_service  # Create new service
+```
+
+---
+
+> **Document Version:** 1.1  
+> **Total Phases:** 15 core + 4 future  
+> **Estimated Total:** 27–32 weeks (full-time solo)  
+> **Next Step:** Phase 11 — Frontend Real Data Integration
 
 ```bash
 # ─── Infrastructure ─────────────────────────────────────
