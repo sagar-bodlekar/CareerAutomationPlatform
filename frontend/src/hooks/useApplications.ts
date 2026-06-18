@@ -20,8 +20,8 @@ export function useApplication(id: number) {
 export function useCreateApplication() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { profile_id: number; job_id: number; company_name?: string; job_title?: string }) =>
-      createApplication(data),
+    mutationFn: (data: { profile_id: number; job_id: number; company_name?: string; job_title?: string; match_score?: number }) =>
+      createApplication(data as Parameters<typeof createApplication>[0]),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["applications"] });
     },
