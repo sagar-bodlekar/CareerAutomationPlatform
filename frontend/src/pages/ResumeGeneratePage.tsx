@@ -1,29 +1,125 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Sparkles, FileText } from "lucide-react";
-
-const templates = [
-  { id: 1, name: "Modern", description: "Clean, contemporary layout with accent colors", popular: true },
-  { id: 2, name: "Classic", description: "Traditional two-column resume layout", popular: false },
-  { id: 3, name: "Minimal", description: "ATS-optimized minimal design", popular: false },
-  { id: 4, name: "Professional", description: "Standard professional format", popular: true },
-];
+import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft, Sparkles, FileText, AlertCircle } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { useCreateResume, useGenerateResume } from "../hooks/useResumes";
+import { getTemplates } from "../services/resumes";
+import TemplateSelector from "../components/resumes/TemplateSelector";
+import { ErrorFallback } from "../components/common/ErrorFallback";
+import { getErrorMessage } from "../utils/errorHandler";
 
 export default function ResumeGeneratePage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const profileId = user?.id ?? 0;
+
+  const {
+    data: templatesData,
+    isLoading: templatesLoading,
+    isError: templatesError,
+    error: templatesErr,
+    refetch: refetchTemplates,
+  } = useQuery({
+    queryKey: ["resumeTemplates"],
+    queryFn: getTemplates,
+  });
+
+  const templates = templatesData?.data ?? [];
+
   const [targetRole, setTargetRole] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState(1);
+  const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
   const [optimizeAts, setOptimizeAts] = useState(true);
-  const [generating, setGenerating] = useState(false);
+
+  const createResume = useCreateResume();
+  const generateResumeMutation = useGenerateResume();
+
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const isGenerating = createResume.isPending || generateResumeMutation.isPending;
 
   const handleGenerate = async () => {
     if (!targetRole.trim()) return;
-    setGenerating(true);
-    await new Promise((r) => setTimeout(r, 2000));
-    setGenerating(false);
-    navigate("/resumes");
+    setGenerationError(null);
+
+    try {
+      // Step 1: Create the resume record
+      const resume = await createResume.mutateAsync({
+        profileId,
+        title: targetRole.trim(),
+      });
+
+      // Step 2: Trigger AI generation
+      await generateResumeMutation.mutateAsync({
+        id: resume.id,
+        targetRole: targetRole.trim(),
+      });
+
+      // Step 3: Navigate to resumes list
+      navigate("/resumes");
+    } catch (err) {
+      setGenerationError(getErrorMessage(err));
+    }
   };
 
+  // --- Templates loading state ---
+  if (templatesLoading) {
+    return (
+      <div className="animate-fade-in space-y-6">
+        <div className="flex items-center gap-4">
+          <div className="h-9 w-9 rounded-lg bg-gray-200 animate-pulse" />
+          <div className="space-y-1">
+            <div className="h-7 w-48 rounded bg-gray-200 animate-pulse" />
+            <div className="h-4 w-64 rounded bg-gray-100 animate-pulse" />
+          </div>
+        </div>
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
+            <div className="rounded-xl border bg-white p-6 shadow-sm">
+              <div className="mb-4 h-5 w-24 rounded bg-gray-200 animate-pulse" />
+              <div className="h-10 w-full rounded-lg bg-gray-200 animate-pulse" />
+            </div>
+            <div className="rounded-xl border bg-white p-6 shadow-sm">
+              <div className="mb-4 h-5 w-36 rounded bg-gray-200 animate-pulse" />
+              <div className="grid gap-3 sm:grid-cols-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-24 rounded-xl border-2 border-gray-200 bg-gray-50 animate-pulse" />
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="space-y-4">
+            <div className="rounded-xl border bg-white p-6 shadow-sm">
+              <div className="mb-3 h-5 w-32 rounded bg-gray-200 animate-pulse" />
+              <div className="mb-4 h-4 w-full rounded bg-gray-100 animate-pulse" />
+              <div className="h-10 w-full rounded-lg bg-gray-200 animate-pulse" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- Templates error state ---
+  if (templatesError) {
+    return (
+      <div className="animate-fade-in space-y-6">
+        <div className="flex items-center gap-4">
+          <button onClick={() => navigate(-1)} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+        </div>
+        <ErrorFallback
+          message={getErrorMessage(templatesErr)}
+          onRetry={() => refetchTemplates()}
+        />
+      </div>
+    );
+  }
+
+  // Set default template when templates load
+  const effectiveTemplateId = selectedTemplate ?? (templates.find((t) => t.is_default)?.id ?? templates[0]?.id ?? null);
+
+  // --- Populated state ---
   return (
     <div className="animate-fade-in space-y-6">
       <div className="flex items-center gap-4">
@@ -35,6 +131,13 @@ export default function ResumeGeneratePage() {
           <p className="text-gray-500">Create a role-optimized resume from your master profile</p>
         </div>
       </div>
+
+      {generationError && (
+        <div className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {generationError}
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
@@ -56,25 +159,15 @@ export default function ResumeGeneratePage() {
           {/* Template selection */}
           <div className="rounded-xl border bg-white p-6 shadow-sm">
             <h2 className="mb-4 text-lg font-semibold text-gray-900">Choose Template</h2>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {templates.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setSelectedTemplate(t.id)}
-                  className={`rounded-xl border-2 p-4 text-left transition-all ${
-                    selectedTemplate === t.id
-                      ? "border-primary-500 bg-primary-50 shadow-sm"
-                      : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-gray-900">{t.name}</span>
-                    {t.popular && <span className="rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700">Popular</span>}
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">{t.description}</p>
-                </button>
-              ))}
-            </div>
+            {templates.length > 0 ? (
+              <TemplateSelector
+                templates={templates}
+                selectedId={effectiveTemplateId ?? 0}
+                onSelect={setSelectedTemplate}
+              />
+            ) : (
+              <p className="py-4 text-center text-sm text-gray-400">No templates available</p>
+            )}
           </div>
 
           {/* Options */}
@@ -104,13 +197,13 @@ export default function ResumeGeneratePage() {
             </p>
             <button
               onClick={handleGenerate}
-              disabled={!targetRole.trim() || generating}
+              disabled={!targetRole.trim() || isGenerating || !effectiveTemplateId}
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-primary-700 disabled:opacity-50"
             >
-              {generating ? (
+              {isGenerating ? (
                 <>
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Generating...
+                  {createResume.isPending ? "Creating..." : "Generating..."}
                 </>
               ) : (
                 <>
