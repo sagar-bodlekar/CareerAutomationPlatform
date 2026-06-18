@@ -63,3 +63,61 @@ export async function exportTrackingData(profileId: number, format: "csv" | "jso
   const { data } = await api.post(`/tracking/export?profile_id=${profileId}&format=${format}`);
   return data.data as { format: string; content: string; filename: string };
 }
+
+export interface ActivityItem {
+  id: number;
+  type: "application" | "resume" | "match" | "interview" | "offer";
+  title: string;
+  description: string;
+  timestamp: string;
+  application_id?: number;
+  job_id?: number;
+}
+
+export async function getRecentActivity(profileId: number, limit = 10): Promise<ActivityItem[]> {
+  const { default: api } = await import("./api");
+  const response = await api.get(`/tracking/applications?profile_id=${profileId}&limit=${limit}`);
+  const raw = response.data?.data;
+
+  // Handle both paginated { applications: [...], total: N } and direct array responses
+  const applications: Array<{
+    id: number;
+    job_title?: string;
+    company_name?: string;
+    status: string;
+    created_at: string;
+    updated_at: string;
+  }> = Array.isArray(raw) ? raw : Array.isArray(raw?.applications) ? raw.applications : [];
+
+  if (applications.length === 0) {
+    return [];
+  }
+
+  // Transform applications into activity items
+  const statusLabels: Record<string, { type: ActivityItem["type"]; title: string }> = {
+    sent: { type: "application", title: "Application Sent" },
+    delivered: { type: "application", title: "Application Delivered" },
+    opened: { type: "application", title: "Application Opened" },
+    replied: { type: "application", title: "Recipient Replied" },
+    interview_scheduled: { type: "interview", title: "Interview Scheduled" },
+    offer_received: { type: "offer", title: "Offer Received" },
+    rejected: { type: "application", title: "Application Status" },
+  };
+
+  return applications
+    .filter((app) => app.status !== "draft" && app.status !== "withdrawn")
+    .slice(0, limit)
+    .map((app) => {
+      const label = statusLabels[app.status] || { type: "application" as const, title: "Application Updated" };
+      return {
+        id: app.id,
+        type: label.type,
+        title: label.title,
+        description: app.job_title
+          ? `${label.title} for ${app.job_title}${app.company_name ? ` at ${app.company_name}` : ""}`
+          : label.title,
+        timestamp: app.updated_at || app.created_at,
+        application_id: app.id,
+      };
+    });
+}
