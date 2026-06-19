@@ -3,7 +3,7 @@ import { X } from "lucide-react";
 
 interface Props {
   skills: Skill[];
-  onRemove?: (id: number) => void;
+  onRemove?: (id: string) => void;
   readonly?: boolean;
 }
 

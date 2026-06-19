@@ -233,6 +233,100 @@ async def delete_work_experience(
     return APIResponse(message="Work experience deleted")
 
 
+# ─── Education ───────────────────────────────────────────────
+
+
+@router.post("/profiles/{profile_id}/education", status_code=201, response_model=APIResponse)
+async def add_education(
+    profile_id: UUID,
+    edu_data: EducationCreate,
+    service: ProfileService = Depends(get_profile_service),
+):
+    """Add an education entry to a profile."""
+    edu = await service.add_education(profile_id, edu_data)
+    if edu is None:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return APIResponse(
+        data=EducationResponse.model_validate(edu),
+        message="Education added",
+    )
+
+
+@router.put("/education/{edu_id}", response_model=APIResponse)
+async def update_education(
+    edu_id: UUID,
+    edu_data: EducationUpdate,
+    service: ProfileService = Depends(get_profile_service),
+):
+    """Update an education entry."""
+    edu = await service.update_education(edu_id, edu_data)
+    if edu is None:
+        raise HTTPException(status_code=404, detail="Education entry not found")
+    return APIResponse(
+        data=EducationResponse.model_validate(edu),
+        message="Education updated",
+    )
+
+
+@router.delete("/education/{edu_id}", response_model=APIResponse)
+async def delete_education(
+    edu_id: UUID,
+    service: ProfileService = Depends(get_profile_service),
+):
+    """Delete an education entry."""
+    deleted = await service.delete_education(edu_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Education entry not found")
+    return APIResponse(message="Education deleted")
+
+
+# ─── Projects ─────────────────────────────────────────────────
+
+
+@router.post("/profiles/{profile_id}/projects", status_code=201, response_model=APIResponse)
+async def add_project(
+    profile_id: UUID,
+    project_data: ProjectCreate,
+    service: ProfileService = Depends(get_profile_service),
+):
+    """Add a project to a profile."""
+    proj = await service.add_project(profile_id, project_data)
+    if proj is None:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return APIResponse(
+        data=ProjectResponse.model_validate(proj),
+        message="Project added",
+    )
+
+
+@router.put("/projects/{proj_id}", response_model=APIResponse)
+async def update_project(
+    proj_id: UUID,
+    project_data: ProjectUpdate,
+    service: ProfileService = Depends(get_profile_service),
+):
+    """Update a project."""
+    proj = await service.update_project(proj_id, project_data)
+    if proj is None:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return APIResponse(
+        data=ProjectResponse.model_validate(proj),
+        message="Project updated",
+    )
+
+
+@router.delete("/projects/{proj_id}", response_model=APIResponse)
+async def delete_project(
+    proj_id: UUID,
+    service: ProfileService = Depends(get_profile_service),
+):
+    """Delete a project."""
+    deleted = await service.delete_project(proj_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return APIResponse(message="Project deleted")
+
+
 # ─── Export / Import ─────────────────────────────────────────
 
 

@@ -32,7 +32,7 @@ function renderContent(content: Record<string, unknown>): ContentBlock {
 export default function ResumeDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const resumeId = Number(id);
+  const resumeId = id ?? "";
 
   const {
     data: resume,

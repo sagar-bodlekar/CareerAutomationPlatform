@@ -3,7 +3,7 @@
 from datetime import datetime
 
 from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text, func
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from shared.database import Base
 
@@ -15,9 +15,9 @@ class Application(Base):
     __table_args__ = {"schema": "career"}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    profile_id = Column(Integer, nullable=False, index=True)
+    profile_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     job_id = Column(Integer, nullable=False, index=True)
-    user_id = Column(Integer, nullable=True, index=True)
+    user_id = Column(UUID(as_uuid=True), nullable=True, index=True)
 
     # ─── State ────────────────────────────────────────────
     status = Column(String(30), default="draft", nullable=False, index=True)

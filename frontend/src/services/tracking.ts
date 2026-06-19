@@ -38,27 +38,27 @@ export interface AnalyticsData {
   response_rate?: number;
 }
 
-export async function getTrackingStats(profileId: number): Promise<TrackingStats> {
+export async function getTrackingStats(profileId: string): Promise<TrackingStats> {
   return getById(`/tracking/stats?profile_id=${profileId}`);
 }
 
-export async function getAnalytics(profileId: number): Promise<AnalyticsData> {
+export async function getAnalytics(profileId: string): Promise<AnalyticsData> {
   return getById(`/tracking/analytics?profile_id=${profileId}`);
 }
 
-export async function getFunnel(profileId: number): Promise<FunnelItem[]> {
+export async function getFunnel(profileId: string): Promise<FunnelItem[]> {
   const { default: api } = await import("./api");
   const { data } = await api.get(`/tracking/funnel?profile_id=${profileId}`);
   return data.data as FunnelItem[];
 }
 
-export async function getDailyTrends(profileId: number, days = 30): Promise<DailyTrend[]> {
+export async function getDailyTrends(profileId: string, days = 30): Promise<DailyTrend[]> {
   const { default: api } = await import("./api");
   const { data } = await api.get(`/tracking/trends?profile_id=${profileId}&days=${days}`);
   return data.data as DailyTrend[];
 }
 
-export async function exportTrackingData(profileId: number, format: "csv" | "json" = "json") {
+export async function exportTrackingData(profileId: string, format: "csv" | "json" = "json") {
   const { default: api } = await import("./api");
   const { data } = await api.post(`/tracking/export?profile_id=${profileId}&format=${format}`);
   return data.data as { format: string; content: string; filename: string };
@@ -74,9 +74,9 @@ export interface ActivityItem {
   job_id?: number;
 }
 
-export async function getRecentActivity(profileId: number, limit = 10): Promise<ActivityItem[]> {
+export async function getRecentActivity(profileId: string, limit = 10): Promise<ActivityItem[]> {
   const { default: api } = await import("./api");
-  const response = await api.get(`/tracking/applications?profile_id=${profileId}&limit=${limit}`);
+  const response = await api.get(`/tracking/applications?profile_id=${profileId}&per_page=${limit}`);
   const raw = response.data?.data;
 
   // Handle both paginated { applications: [...], total: N } and direct array responses

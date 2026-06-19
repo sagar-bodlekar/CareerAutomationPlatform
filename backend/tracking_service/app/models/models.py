@@ -3,15 +3,13 @@
 from datetime import datetime
 
 from sqlalchemy import Column, DateTime, Float, Integer, String, Text, func
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from shared.database import Base
 
 
 # ── Read-Only Application Model ─────────────────────────────────
 # Maps to the existing career.applications table from application_service.
-# This is for read queries only - Alembic will NOT create this table
-# via this service's models (no migration here).
 
 
 class Application(Base):
@@ -21,9 +19,9 @@ class Application(Base):
     __table_args__ = {"schema": "career", "extend_existing": True}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    profile_id = Column(Integer, nullable=False, index=True)
+    profile_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     job_id = Column(Integer, nullable=False, index=True)
-    user_id = Column(Integer, nullable=True, index=True)
+    user_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     status = Column(String(30), default="draft", nullable=False, index=True)
     previous_status = Column(String(30), nullable=True)
     resume_id = Column(Integer, nullable=True)
@@ -55,7 +53,7 @@ class ApplicationStat(Base):
     __table_args__ = {"schema": "career"}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    profile_id = Column(Integer, nullable=False, index=True)
+    profile_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     total_applications = Column(Integer, default=0)
     total_sent = Column(Integer, default=0)
     total_delivered = Column(Integer, default=0)
@@ -79,7 +77,7 @@ class ApplicationFunnel(Base):
     __table_args__ = {"schema": "career"}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    profile_id = Column(Integer, nullable=False, index=True)
+    profile_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     status_counts = Column(JSONB, nullable=False, comment="Map of status -> count")
     snapshot_date = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -92,7 +90,7 @@ class DailyCount(Base):
     __table_args__ = {"schema": "career"}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    profile_id = Column(Integer, nullable=False, index=True)
+    profile_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     date = Column(DateTime(timezone=True), nullable=False, index=True)
     count = Column(Integer, default=0, nullable=False)
     sent_count = Column(Integer, default=0)

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTrackingStats, useFunnel, useDailyTrends } from "../hooks/useTracking";
+import { useProfile } from "../hooks/useProfile";
 import StatsCard from "../components/tracking/StatsCard";
 import ApplicationFunnel from "../components/tracking/ApplicationFunnel";
 import DailyChart from "../components/tracking/DailyChart";
@@ -24,7 +25,8 @@ import { getErrorMessage } from "../utils/errorHandler";
 
 export default function TrackingPage() {
   const { user } = useAuth();
-  const profileId = user?.id ?? 0;
+  const { data: profile } = useProfile(user?.id ?? "");
+  const profileId = profile?.id ?? "";
 
   const {
     data: stats,

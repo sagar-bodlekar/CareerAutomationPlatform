@@ -1,7 +1,7 @@
 import { createItem, updateItem, getById, getList, postAction } from "./api";
 import type { Application } from "../types";
 
-export async function getApplications(profileId: number, status?: string, page = 1, perPage = 20) {
+export async function getApplications(profileId: string, status?: string, page = 1, perPage = 20) {
   return getList<Application>("/applications", { profile_id: profileId, status, page, per_page: perPage });
 }
 
@@ -10,7 +10,7 @@ export async function getApplication(id: number): Promise<Application> {
 }
 
 export async function createApplication(data: {
-  profile_id: number;
+  profile_id: string;
   job_id: number;
   company_name?: string;
   job_title?: string;

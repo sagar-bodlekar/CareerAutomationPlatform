@@ -14,5 +14,5 @@ async def get_application_service(db: AsyncSession = Depends(get_session)) -> Ap
     return ApplicationService(db)
 
 
-async def get_current_user_id(request: Request) -> Optional[int]:
+async def get_current_user_id(request: Request) -> Optional[str]:
     return None

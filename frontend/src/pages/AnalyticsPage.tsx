@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, Globe, Clock, Percent, BarChart3, Inbox } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useAnalytics } from "../hooks/useTracking";
+import { useProfile } from "../hooks/useProfile";
 import SourceBreakdown from "../components/tracking/SourceBreakdown";
 import ApplicationFunnel from "../components/tracking/ApplicationFunnel";
 import { ErrorFallback } from "../components/common/ErrorFallback";
@@ -23,7 +24,8 @@ function MetricSkeleton() {
 
 export default function AnalyticsPage() {
   const { user } = useAuth();
-  const profileId = user?.id ?? 0;
+  const { data: profile } = useProfile(user?.id ?? "");
+  const profileId = profile?.id ?? "";
 
   const {
     data: analytics,

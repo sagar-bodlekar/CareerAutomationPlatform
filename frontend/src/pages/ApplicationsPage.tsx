@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Send, Clock } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useApplications } from "../hooks/useApplications";
+import { useProfile } from "../hooks/useProfile";
 import ApplicationCard from "../components/applications/ApplicationCard";
 import { CardSkeleton } from "../components/common/Skeletons";
 import { ErrorFallback } from "../components/common/ErrorFallback";
@@ -22,7 +23,9 @@ const statusFilters = [
 
 export default function ApplicationsPage() {
   const { user } = useAuth();
-  const profileId = user?.id ?? 0;
+  // Fetch profile to get the profile UUID for application queries
+  const { data: profile } = useProfile(user?.id ?? "");
+  const profileId = profile?.id ?? "";
 
   const [filter, setFilter] = useState("all");
 

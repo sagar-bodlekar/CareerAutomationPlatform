@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Sparkles, FileText, AlertCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useCreateResume, useGenerateResume } from "../hooks/useResumes";
+import { useProfile } from "../hooks/useProfile";
 import { getTemplates } from "../services/resumes";
 import TemplateSelector from "../components/resumes/TemplateSelector";
 import { ErrorFallback } from "../components/common/ErrorFallback";
@@ -12,7 +13,8 @@ import { getErrorMessage } from "../utils/errorHandler";
 export default function ResumeGeneratePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const profileId = user?.id ?? 0;
+  const { data: profile } = useProfile(user?.id ?? "");
+  const profileId = profile?.id ?? "";
 
   const {
     data: templatesData,

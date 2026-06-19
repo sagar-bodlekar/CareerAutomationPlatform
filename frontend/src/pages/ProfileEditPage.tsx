@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Save, ArrowLeft, AlertCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { useProfile, useUpdateProfile } from "../hooks/useProfile";
+import { useProfile, useCreateProfile, useUpdateProfile } from "../hooks/useProfile";
 import { ProfileSkeleton } from "../components/common/Skeletons";
 import { ErrorFallback } from "../components/common/ErrorFallback";
-import { getErrorMessage } from "../utils/errorHandler";
+import { getErrorMessage, isNotFoundError } from "../utils/errorHandler";
 import type { Profile } from "../types";
 
 interface FormState {
@@ -36,17 +36,16 @@ const emptyForm: FormState = {
 
 export default function ProfileEditPage() {
   const { user } = useAuth();
-  const profileId = user?.id ?? 0;
-
   const {
     data: profile,
     isLoading,
     isError,
     error,
     refetch,
-  } = useProfile(profileId);
+  } = useProfile(user?.id ?? "");
 
-  const updateProfileMutation = useUpdateProfile(profileId);
+  const updateProfileMutation = useUpdateProfile();
+  const createProfileMutation = useCreateProfile();
 
   const [form, setForm] = useState<FormState>(emptyForm);
   const [initialized, setInitialized] = useState(false);
@@ -59,7 +58,7 @@ export default function ProfileEditPage() {
         full_name: pi?.full_name ?? "",
         email: pi?.email ?? "",
         phone: pi?.phone ?? "",
-        location: pi?.location ?? "",
+        location: pi?.city ?? pi?.location ?? "",
         headline: profile.headline ?? "",
         summary: profile.summary ?? "",
         linkedin_url: pi?.linkedin_url ?? "",
@@ -81,29 +80,38 @@ export default function ProfileEditPage() {
     e.preventDefault();
     setSaveError(null);
 
-    try {
-      const payload: Record<string, unknown> = {
-        headline: form.headline || undefined,
-        summary: form.summary || undefined,
-        personal_info: {
-          full_name: form.full_name,
-          email: form.email,
-          phone: form.phone || undefined,
-          location: form.location || undefined,
-          linkedin_url: form.linkedin_url || undefined,
-          github_url: form.github_url || undefined,
-          portfolio_url: form.portfolio_url || undefined,
-          website_url: form.website_url || undefined,
-        },
-      };
+    const payload: Record<string, unknown> = {
+      headline: form.headline || undefined,
+      summary: form.summary || undefined,
+      personal_info: {
+        full_name: form.full_name,
+        email: form.email,
+        phone: form.phone || undefined,
+        city: form.location || undefined,
+      },
+    };
 
-      await updateProfileMutation.mutateAsync(payload as Partial<Profile>);
+    try {
+      if (!profile) {
+        // No profile yet — create one first
+        await createProfileMutation.mutateAsync({
+          userId: user?.id ?? "",
+          data: payload as Partial<Profile>,
+        });
+        // The refetch happens automatically via invalidateQueries
+      } else {
+        // Profile exists — update it
+        await updateProfileMutation.mutateAsync({
+          profileId: profile.id,
+          data: payload as Partial<Profile>,
+        });
+      }
     } catch (err) {
       setSaveError(getErrorMessage(err));
     }
   };
 
-  const isSaving = updateProfileMutation.isPending;
+  const isSaving = updateProfileMutation.isPending || createProfileMutation.isPending;
 
   // --- Loading state ---
   if (isLoading) {
@@ -114,8 +122,8 @@ export default function ProfileEditPage() {
     );
   }
 
-  // --- Error state ---
-  if (isError) {
+  // --- Error state (non-404 errors only) ---
+  if (isError && !isNotFoundError(error)) {
     return (
       <div className="animate-fade-in space-y-6">
         <div className="flex items-center gap-4">
@@ -131,7 +139,7 @@ export default function ProfileEditPage() {
     );
   }
 
-  // --- Populated state ---
+  // --- Populated state (also reached on 404 — shows empty form for new users) ---
   return (
     <div className="animate-fade-in space-y-6">
       <div className="flex items-center justify-between">
@@ -144,18 +152,6 @@ export default function ProfileEditPage() {
             <p className="text-gray-500">Update your career information</p>
           </div>
         </div>
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-primary-700 disabled:opacity-50"
-        >
-          {isSaving ? (
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-          ) : (
-            <Save className="h-4 w-4" />
-          )}
-          {isSaving ? "Saving..." : "Save"}
-        </button>
       </div>
 
       {saveError && (
@@ -165,7 +161,7 @@ export default function ProfileEditPage() {
         </div>
       )}
 
-      {updateProfileMutation.isSuccess && !saveError && (
+      {(updateProfileMutation.isSuccess || createProfileMutation.isSuccess) && !saveError && (
         <div className="rounded-lg bg-green-50 p-3 text-sm text-green-700">
           Profile saved successfully!
         </div>
@@ -280,6 +276,22 @@ export default function ProfileEditPage() {
               />
             </div>
           </div>
+        </div>
+
+        {/* Submit button inside form */}
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="flex items-center gap-2 rounded-lg bg-primary-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-primary-700 disabled:opacity-50"
+          >
+            {isSaving ? (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            {isSaving ? "Saving..." : "Save Changes"}
+          </button>
         </div>
       </form>
     </div>

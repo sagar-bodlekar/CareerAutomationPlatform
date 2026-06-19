@@ -17,7 +17,7 @@ class AnalyticsService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_analytics(self, profile_id: int) -> AnalyticsResponse:
+    async def get_analytics(self, profile_id: str) -> AnalyticsResponse:
         """Get comprehensive analytics for a profile."""
         from ..models.models import Application
 

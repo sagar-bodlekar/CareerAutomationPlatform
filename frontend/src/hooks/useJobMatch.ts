@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { scoreMatch } from "../services/matches";
 
-export function useJobMatch(profileId: number, jobId: number) {
+export function useJobMatch(profileId: string, jobId: number) {
   return useQuery({
     queryKey: ["jobMatch", profileId, jobId],
     queryFn: () => scoreMatch(profileId, jobId),

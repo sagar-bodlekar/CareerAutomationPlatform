@@ -10,7 +10,7 @@ import { getErrorMessage } from "../utils/errorHandler";
 
 export default function NotificationsPage() {
   const { user } = useAuth();
-  const userId = user?.id ?? 0;
+  const userId = user?.id ?? "";
 
   const [filter, setFilter] = useState<"all" | "unread">("all");
 

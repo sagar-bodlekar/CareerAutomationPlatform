@@ -2,7 +2,7 @@ import { createItem, getById } from "./api";
 import type { OutreachContent } from "../types";
 
 export interface CoverLetterRequest {
-  profile_id: number;
+  profile_id: string;
   job_id: number;
   company_name: string;
   job_title: string;
@@ -15,7 +15,7 @@ export interface CoverLetterRequest {
 }
 
 export interface EmailRequest {
-  profile_id: number;
+  profile_id: string;
   job_id: number;
   company_name: string;
   job_title: string;

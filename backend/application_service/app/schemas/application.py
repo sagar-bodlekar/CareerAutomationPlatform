@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -9,9 +10,9 @@ from pydantic import BaseModel, Field
 class ApplicationCreate(BaseModel):
     """Create a new application draft."""
 
-    profile_id: int
+    profile_id: str
     job_id: int
-    user_id: Optional[int] = None
+    user_id: Optional[str] = None
     company_name: Optional[str] = None
     job_title: Optional[str] = None
     job_location: Optional[str] = None
@@ -35,9 +36,9 @@ class ApplicationResponse(BaseModel):
     """Full application response."""
 
     id: int
-    profile_id: int
+    profile_id: str
     job_id: int
-    user_id: Optional[int] = None
+    user_id: Optional[str] = None
     status: str = "draft"
     company_name: Optional[str] = None
     job_title: Optional[str] = None

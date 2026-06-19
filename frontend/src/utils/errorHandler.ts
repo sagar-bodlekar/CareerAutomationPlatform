@@ -87,6 +87,10 @@ export function parseError(error: unknown): ParsedError {
   };
 }
 
+export function isNotFoundError(error: unknown): boolean {
+  return parseError(error).status === 404;
+}
+
 export function getFieldError(
   error: unknown,
   fieldName: string,

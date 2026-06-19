@@ -116,11 +116,14 @@ async def list_resumes(
         include_deleted=include_deleted,
     )
     summaries = [service.to_summary(r) for r in resumes]
-    from shared.schemas.pagination import PaginatedResponse, PaginationMeta
 
-    return PaginatedResponse(
-        data=[s.model_dump() for s in summaries],
-        meta=PaginationMeta.compute(page=page, per_page=page_size, total=total),
+    return APIResponse(
+        data={
+            "items": [s.model_dump() for s in summaries],
+            "total": total,
+            "page": page,
+            "per_page": page_size,
+        },
     )
 
 

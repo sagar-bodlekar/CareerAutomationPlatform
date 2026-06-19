@@ -5,6 +5,7 @@ import { useJob } from "../hooks/useJobs";
 import { useAuth } from "../context/AuthContext";
 import { useJobMatch } from "../hooks/useJobMatch";
 import { useCreateApplication } from "../hooks/useApplications";
+import { useProfile } from "../hooks/useProfile";
 import { JobDetailSkeleton } from "../components/common/Skeletons";
 import { ErrorFallback } from "../components/common/ErrorFallback";
 import { formatSalary, formatRelativeTime, getScoreLabel } from "../utils/formatters";
@@ -14,7 +15,8 @@ export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const profileId = user?.id ?? 0;
+  const { data: profile } = useProfile(user?.id ?? "");
+  const profileId = profile?.id ?? "";
   const jobId = Number(id);
 
   const {

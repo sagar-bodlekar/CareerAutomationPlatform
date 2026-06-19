@@ -8,6 +8,7 @@ export function useJobs(filters: JobFilters = {}) {
   return useQuery({
     queryKey: ["jobs", filters],
     queryFn: () => searchJobs(filters),
+    staleTime: 2 * 60 * 1000, // 2 min — moderate freshness
   });
 }
 
@@ -16,5 +17,6 @@ export function useJob(id: number) {
     queryKey: ["job", id],
     queryFn: () => getJob(id),
     enabled: !!id,
+    staleTime: 5 * 60 * 1000, // 5 min — job details relatively stable
   });
 }

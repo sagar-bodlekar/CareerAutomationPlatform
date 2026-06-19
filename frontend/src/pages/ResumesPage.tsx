@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { FileText, Plus } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useResumes } from "../hooks/useResumes";
+import { useProfile } from "../hooks/useProfile";
 import ResumeCard from "../components/resumes/ResumeCard";
 import { CardSkeleton } from "../components/common/Skeletons";
 import { ErrorFallback } from "../components/common/ErrorFallback";
@@ -9,7 +10,8 @@ import { getErrorMessage } from "../utils/errorHandler";
 
 export default function ResumesPage() {
   const { user } = useAuth();
-  const profileId = user?.id ?? 0;
+  const { data: profile } = useProfile(user?.id ?? "");
+  const profileId = profile?.id ?? "";
 
   const {
     data,

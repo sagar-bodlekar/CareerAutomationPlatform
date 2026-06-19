@@ -24,5 +24,5 @@ async def get_export_service(db: AsyncSession = Depends(get_session)) -> ExportS
     return ExportService(db)
 
 
-async def get_current_user_id(request: Request) -> Optional[int]:
+async def get_current_user_id(request: Request) -> Optional[str]:
     return None

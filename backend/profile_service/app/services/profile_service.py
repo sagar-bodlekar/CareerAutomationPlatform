@@ -107,6 +107,10 @@ class ProfileService:
 
         self.session.add(profile)
         await self.session.flush()
+        await self.session.refresh(profile, attribute_names=[
+            "personal_info", "skills", "work_experiences",
+            "education", "projects", "certifications", "social_links",
+        ])
         return profile
 
     async def get_profile(self, profile_id: UUID) -> UserProfile | None:
@@ -188,7 +192,7 @@ class ProfileService:
             headline=profile.headline,
             location_city=profile.location_city,
             location_country=profile.location_country,
-            location_type=profile.location_type.value if profile.location_type else None,
+            location_type=profile.location_type if profile.location_type else None,
             open_to_work=profile.open_to_work,
             years_of_experience=profile.years_of_experience,
             skill_count=len(profile.skills) if profile.skills else 0,
@@ -277,6 +281,80 @@ class ProfileService:
         if exp is None:
             return False
         await self.session.delete(exp)
+        await self.session.flush()
+        return True
+
+    # ─── Education ───────────────────────────────────────────
+
+    async def add_education(self, profile_id: UUID, edu_data) -> Education | None:
+        """Add an education entry to a profile."""
+        profile = await self.session.get(UserProfile, profile_id)
+        if profile is None:
+            return None
+        edu = Education(profile_id=profile_id, **edu_data.model_dump(exclude_none=True))
+        self.session.add(edu)
+        await self.session.flush()
+        return edu
+
+    async def update_education(self, edu_id: UUID, edu_data) -> Education | None:
+        """Update an education entry."""
+        result = await self.session.execute(
+            select(Education).where(Education.id == edu_id)
+        )
+        edu = result.scalar_one_or_none()
+        if edu is None:
+            return None
+        for field, value in edu_data.model_dump(exclude_none=True).items():
+            setattr(edu, field, value)
+        await self.session.flush()
+        return edu
+
+    async def delete_education(self, edu_id: UUID) -> bool:
+        """Delete an education entry."""
+        result = await self.session.execute(
+            select(Education).where(Education.id == edu_id)
+        )
+        edu = result.scalar_one_or_none()
+        if edu is None:
+            return False
+        await self.session.delete(edu)
+        await self.session.flush()
+        return True
+
+    # ─── Projects ─────────────────────────────────────────────
+
+    async def add_project(self, profile_id: UUID, project_data) -> Project | None:
+        """Add a project to a profile."""
+        profile = await self.session.get(UserProfile, profile_id)
+        if profile is None:
+            return None
+        proj = Project(profile_id=profile_id, **project_data.model_dump(exclude_none=True))
+        self.session.add(proj)
+        await self.session.flush()
+        return proj
+
+    async def update_project(self, proj_id: UUID, project_data) -> Project | None:
+        """Update a project."""
+        result = await self.session.execute(
+            select(Project).where(Project.id == proj_id)
+        )
+        proj = result.scalar_one_or_none()
+        if proj is None:
+            return None
+        for field, value in project_data.model_dump(exclude_none=True).items():
+            setattr(proj, field, value)
+        await self.session.flush()
+        return proj
+
+    async def delete_project(self, proj_id: UUID) -> bool:
+        """Delete a project."""
+        result = await self.session.execute(
+            select(Project).where(Project.id == proj_id)
+        )
+        proj = result.scalar_one_or_none()
+        if proj is None:
+            return False
+        await self.session.delete(proj)
         await self.session.flush()
         return True
 

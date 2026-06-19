@@ -98,7 +98,7 @@ class ApplicationService:
         return self._to_response(app)
 
     async def list_applications(
-        self, profile_id: int, page: int = 1, per_page: int = 20,
+        self, profile_id: str, page: int = 1, per_page: int = 20,
         status: Optional[str] = None,
     ) -> tuple[list[ApplicationResponse], int]:
         """List applications for a profile with pagination."""

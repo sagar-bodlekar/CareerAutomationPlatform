@@ -1,31 +1,41 @@
 /// <reference types="vitest" />
 
 export interface Profile {
-  id: number;
-  user_id: number;
+  id: string;
+  user_id: string;
   headline?: string;
   summary?: string;
-  total_experience_years?: number;
+  years_of_experience?: number;
   current_role?: string;
   preferred_roles: string[];
-  preferred_locations: string[];
-  remote_preference: string;
+  location_city?: string;
+  location_state?: string;
+  location_country?: string;
+  location_type?: string;
+  open_to_work: boolean;
+  target_salary_min?: number;
+  target_salary_max?: number;
+  target_salary_currency: string;
   created_at: string;
   updated_at: string;
   personal_info?: PersonalInfo;
   skills: Skill[];
-  experiences: Experience[];
+  work_experiences: WorkExperience[];
   education: Education[];
   projects: Project[];
   certifications: Certification[];
 }
 
 export interface PersonalInfo {
-  id: number;
+  id: string;
+  profile_id: string;
   full_name: string;
-  email: string;
+  email?: string;
   phone?: string;
-  location?: string;
+  location?: string; // kept for backward compat — derived from city/state/country in API
+  city?: string;
+  state?: string;
+  country?: string;
   linkedin_url?: string;
   portfolio_url?: string;
   github_url?: string;
@@ -33,7 +43,7 @@ export interface PersonalInfo {
 }
 
 export interface Skill {
-  id: number;
+  id: string;
   name: string;
   category: string;
   proficiency: string;
@@ -41,10 +51,12 @@ export interface Skill {
   is_top_skill: boolean;
 }
 
-export interface Experience {
-  id: number;
+// Renamed from Experience to WorkExperience to match backend work_experiences field
+export interface WorkExperience {
+  id: string;
   company_name: string;
-  title: string;
+  job_title: string;
+  title?: string;
   location?: string;
   start_date: string;
   end_date?: string;
@@ -52,25 +64,35 @@ export interface Experience {
   description?: string;
   achievements: string[];
   technologies: string[];
+  skills_used?: string[];
 }
 
+// Keep Experience as an alias for backward compatibility
+export type Experience = WorkExperience;
+
 export interface Education {
-  id: number;
+  id: string;
   institution: string;
   degree?: string;
   field?: string;
+  field_of_study?: string;
   start_date?: string;
   end_date?: string;
+  is_current?: boolean;
+  description?: string;
   gpa?: number;
+  grade?: string;
   achievements: string[];
+  activities?: string[];
 }
 
 export interface Project {
-  id: number;
+  id: string;
   name: string;
   description?: string;
   technologies: string[];
   url?: string;
+  role?: string;
   start_date?: string;
   end_date?: string;
   is_current: boolean;
@@ -78,7 +100,7 @@ export interface Project {
 }
 
 export interface Certification {
-  id: number;
+  id: string;
   name: string;
   issuer?: string;
   issue_date?: string;
@@ -109,8 +131,8 @@ export interface Job {
 }
 
 export interface Match {
-  id: number;
-  profile_id: number;
+  id: string;
+  profile_id: string;
   job_id: number;
   match_score: number;
   skills_match: { matched: string[]; missing: string[]; extra: string[] };
@@ -122,7 +144,7 @@ export interface Match {
 
 export interface Application {
   id: number;
-  profile_id: number;
+  profile_id: string;
   job_id: number;
   status: string;
   company_name?: string;
@@ -155,8 +177,8 @@ export interface ApplicationEvent {
 }
 
 export interface Resume {
-  id: number;
-  profile_id: number;
+  id: string;
+  profile_id: string;
   title: string;
   resume_type: string;
   target_role?: string;
@@ -175,7 +197,7 @@ export interface ResumeTemplate {
 }
 
 export interface OutreachContent {
-  id: number;
+  id: string;
   content_type: string;
   subject?: string;
   body: string;
@@ -188,7 +210,7 @@ export interface OutreachContent {
 }
 
 export interface User {
-  id: number;
+  id: string;
   email: string;
   role: string;
 }

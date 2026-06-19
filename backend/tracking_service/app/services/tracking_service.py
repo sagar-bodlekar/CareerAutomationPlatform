@@ -24,7 +24,7 @@ class TrackingService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_stats(self, profile_id: int) -> TrackingStats:
+    async def get_stats(self, profile_id: str) -> TrackingStats:
         """Get aggregate tracking stats for a profile."""
         # In production, query from application_stats table.
         # For now, compute from applications and events.
@@ -61,7 +61,7 @@ class TrackingService:
             success_rate=round(success_rate, 1) if success_rate else None,
         )
 
-    async def get_funnel(self, profile_id: int) -> list[FunnelData]:
+    async def get_funnel(self, profile_id: str) -> list[FunnelData]:
         """Get application funnel data (status distribution)."""
         from ..models.models import Application
 
@@ -94,7 +94,7 @@ class TrackingService:
 
     async def get_daily_trends(
         self,
-        profile_id: int,
+        profile_id: str,
         days: int = 30,
     ) -> list[DailyTrend]:
         """Get daily application counts for trend charts."""
@@ -141,7 +141,7 @@ class TrackingService:
 
     async def get_applications_list(
         self,
-        profile_id: int,
+        profile_id: str,
         status: Optional[str] = None,
         page: int = 1,
         per_page: int = 20,

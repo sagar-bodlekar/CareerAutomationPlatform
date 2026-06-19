@@ -16,7 +16,7 @@ import { useProfile } from "../hooks/useProfile";
 import ExperienceTimeline from "../components/profile/ExperienceTimeline";
 import { ProfileSkeleton } from "../components/common/Skeletons";
 import { ErrorFallback } from "../components/common/ErrorFallback";
-import { getErrorMessage } from "../utils/errorHandler";
+import { getErrorMessage, isNotFoundError } from "../utils/errorHandler";
 
 const categoryColors: Record<string, string> = {
   technical: "bg-indigo-100 text-indigo-700",
@@ -42,15 +42,13 @@ function Badge({ children, variant = "default" }: { children: React.ReactNode; v
 
 export default function ProfilePage() {
   const { user } = useAuth();
-  const profileId = user?.id ?? 0;
-
   const {
     data: profile,
     isLoading,
     isError,
     error,
     refetch,
-  } = useProfile(profileId);
+  } = useProfile(user?.id ?? "");
 
   // Loading state
   if (isLoading) {
@@ -67,8 +65,9 @@ export default function ProfilePage() {
     );
   }
 
-  // Error state
-  if (isError) {
+  // Error OR empty state
+  // Treat 404 (profile not found) as "no profile yet" — show the empty state
+  if (isError && !isNotFoundError(error)) {
     return (
       <div className="animate-fade-in space-y-6">
         <div className="flex items-center justify-between">
@@ -85,7 +84,7 @@ export default function ProfilePage() {
     );
   }
 
-  // Empty state — new user, no profile yet
+  // Empty state — new user, no profile yet (also reached on 404)
   if (!profile) {
     return (
       <div className="animate-fade-in space-y-6">
@@ -204,13 +203,16 @@ export default function ProfilePage() {
           <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900">
             <Briefcase className="h-5 w-5 text-blue-500" /> Experience
           </h3>
-          {profile.experiences.length > 0 ? (
-            <ExperienceTimeline experiences={profile.experiences} />
+          {(profile.work_experiences && profile.work_experiences.length > 0) ? (
+            <ExperienceTimeline experiences={profile.work_experiences} />
           ) : (
             <div className="py-6 text-center text-sm text-gray-400">
               No work experience added yet.
             </div>
           )}
+          <Link to="/profile/manage" className="mt-4 inline-block text-sm font-medium text-primary-600 hover:text-primary-500">
+            Manage all data →
+          </Link>
         </div>
 
         {/* Education */}

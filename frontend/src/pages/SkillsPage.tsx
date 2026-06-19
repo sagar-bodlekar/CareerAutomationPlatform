@@ -2,11 +2,12 @@ import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Search, X, Award, Save, AlertCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { useProfile, useUpdateProfile } from "../hooks/useProfile";
+import { useProfile } from "../hooks/useProfile";
+import { useDeleteSkill, useBulkAddSkills } from "../hooks/useProfileEntities";
 import { ProfileSkeleton } from "../components/common/Skeletons";
 import { ErrorFallback } from "../components/common/ErrorFallback";
 import { getErrorMessage } from "../utils/errorHandler";
-import type { Skill, Profile } from "../types";
+import type { Skill } from "../types";
 
 // Suggestion pool of common skills (no backend catalog available)
 const allSkills = [
@@ -41,21 +42,21 @@ function Badge({ children, color }: { children: React.ReactNode; color?: string 
 
 export default function SkillsPage() {
   const { user } = useAuth();
-  const profileId = user?.id ?? 0;
-
   const {
     data: profile,
     isLoading,
     isError,
     error,
     refetch,
-  } = useProfile(profileId);
+  } = useProfile(user?.id ?? "");
 
-  const updateProfile = useUpdateProfile(profileId);
+  const deleteSkill = useDeleteSkill();
+  const bulkAdd = useBulkAddSkills();
 
   const [search, setSearch] = useState("");
   const [mySkills, setMySkills] = useState<Skill[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Initialize local skills state from profile data
   useEffect(() => {
@@ -69,7 +70,7 @@ export default function SkillsPage() {
     const candidate = allSkills.find((s) => s.name === name);
     if (!candidate) return;
     const newSkill: Skill = {
-      id: 0, // New skill, backend will assign id
+      id: "", // New skill, backend will assign id
       name: candidate.name,
       category: candidate.category,
       proficiency: "intermediate",
@@ -90,20 +91,40 @@ export default function SkillsPage() {
     setHasChanges(true);
   }, []);
 
+  const isSaving = deleteSkill.isPending || bulkAdd.isPending;
+
   const handleSave = async () => {
+    if (!profile) return;
+    setSaveError(null);
     try {
-      await updateProfile.mutateAsync({ skills: mySkills } as Partial<Profile>);
+      // Step 1: Delete all existing skills
+      const existingSkills = profile.skills ?? [];
+      const deletePromises = existingSkills
+        .filter((s) => s.id !== "")
+        .map((s) => deleteSkill.mutateAsync(s.id));
+      await Promise.all(deletePromises);
+
+      // Step 2: Bulk add the new skill set
+      if (mySkills.length > 0) {
+        await bulkAdd.mutateAsync({
+          profileId: profile.id,
+          skills: mySkills.map((s) => ({
+            name: s.name,
+            category: s.category,
+            proficiency: s.proficiency,
+          })),
+        });
+      }
+
       setHasChanges(false);
-    } catch {
-      // Error shown inline
+    } catch (err) {
+      setSaveError(getErrorMessage(err));
     }
   };
 
   const suggestedSkills = allSkills.filter(
     (s) => s.name.toLowerCase().includes(search.toLowerCase()) && !mySkills.find((ms) => ms.name === s.name)
   );
-
-  const saveError = updateProfile.isError ? getErrorMessage(updateProfile.error) : null;
 
   // --- Loading state ---
   if (isLoading) {
@@ -140,15 +161,15 @@ export default function SkillsPage() {
           {hasChanges && (
             <button
               onClick={handleSave}
-              disabled={updateProfile.isPending}
+              disabled={isSaving}
               className="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 disabled:opacity-50 transition-colors"
             >
-              {updateProfile.isPending ? (
+              {isSaving ? (
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
               ) : (
                 <Save className="h-4 w-4" />
               )}
-              {updateProfile.isPending ? "Saving..." : "Save Changes"}
+              {isSaving ? "Saving..." : "Save Changes"}
             </button>
           )}
           <Link to="/profile" className="text-sm font-medium text-gray-500 hover:text-gray-700">

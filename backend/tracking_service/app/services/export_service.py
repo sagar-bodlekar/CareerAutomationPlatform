@@ -17,7 +17,7 @@ class ExportService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def export_csv(self, profile_id: int) -> str:
+    async def export_csv(self, profile_id: str) -> str:
         """Export applications as CSV string."""
         from ..models.models import Application
 
@@ -48,7 +48,7 @@ class ExportService:
 
         return output.getvalue()
 
-    async def export_json(self, profile_id: int) -> str:
+    async def export_json(self, profile_id: str) -> str:
         """Export applications as JSON string."""
         from ..models.models import Application
 

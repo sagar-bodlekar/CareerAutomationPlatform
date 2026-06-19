@@ -18,7 +18,7 @@ router = APIRouter(prefix="/applications", tags=["Applications"])
 async def create_application(
     data: ApplicationCreate,
     svc: ApplicationService = Depends(get_application_service),
-    _user_id: Optional[int] = Depends(get_current_user_id),
+    _user_id: Optional[str] = Depends(get_current_user_id),
 ):
     """Create a new application draft."""
     app = await svc.create(data)
@@ -29,7 +29,7 @@ async def create_application(
 async def get_application(
     application_id: int,
     svc: ApplicationService = Depends(get_application_service),
-    _user_id: Optional[int] = Depends(get_current_user_id),
+    _user_id: Optional[str] = Depends(get_current_user_id),
 ):
     """Get application with timeline and state info."""
     app = await svc.get(application_id)
@@ -44,7 +44,7 @@ async def update_application_status(
     application_id: int,
     update: ApplicationUpdate,
     svc: ApplicationService = Depends(get_application_service),
-    _user_id: Optional[int] = Depends(get_current_user_id),
+    _user_id: Optional[str] = Depends(get_current_user_id),
 ):
     """Update application status (with state machine validation)."""
     try:
@@ -60,7 +60,7 @@ async def update_application_status(
 async def submit_application(
     application_id: int,
     svc: ApplicationService = Depends(get_application_service),
-    _user_id: Optional[int] = Depends(get_current_user_id),
+    _user_id: Optional[str] = Depends(get_current_user_id),
 ):
     """Submit an application (transitions to sent)."""
     try:
@@ -74,12 +74,12 @@ async def submit_application(
 
 @router.get("", response_model=APIResponse)
 async def list_applications(
-    profile_id: int = Query(..., description="Profile ID"),
+    profile_id: str = Query(..., description="Profile ID"),
     status: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     svc: ApplicationService = Depends(get_application_service),
-    _user_id: Optional[int] = Depends(get_current_user_id),
+    _user_id: Optional[str] = Depends(get_current_user_id),
 ):
     """List applications with filters and pagination."""
     apps, total = await svc.list_applications(profile_id, page=page, per_page=per_page, status=status)
@@ -90,7 +90,7 @@ async def list_applications(
 async def get_application_events(
     application_id: int,
     svc: ApplicationService = Depends(get_application_service),
-    _user_id: Optional[int] = Depends(get_current_user_id),
+    _user_id: Optional[str] = Depends(get_current_user_id),
 ):
     """Get application event timeline."""
     events = await svc.get_events(application_id)

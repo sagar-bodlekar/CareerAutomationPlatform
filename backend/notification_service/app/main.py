@@ -51,7 +51,7 @@ def create_app() -> FastAPI:
 
     @app.get("/api/v1/notifications")
     async def get_notifications(
-        user_id: int,
+        user_id: str,
         limit: int = 20,
         unread_only: bool = False,
     ):
@@ -62,25 +62,25 @@ def create_app() -> FastAPI:
         return {"data": notifications}
 
     @app.get("/api/v1/notifications/unread/count")
-    async def get_unread_count(user_id: int):
+    async def get_unread_count(user_id: str):
         """Get unread notification count."""
         count = await notif_service.get_unread_count(user_id)
         return {"data": {"count": count}}
 
     @app.post("/api/v1/notifications/{notification_id}/read")
-    async def mark_as_read(notification_id: int, user_id: int):
+    async def mark_as_read(notification_id: int, user_id: str):
         """Mark a notification as read."""
         success = await notif_service.mark_as_read(user_id, notification_id)
         return {"data": {"success": success}}
 
     @app.post("/api/v1/notifications/read-all")
-    async def mark_all_as_read(user_id: int):
+    async def mark_all_as_read(user_id: str):
         """Mark all notifications as read."""
         count = await notif_service.mark_all_as_read(user_id)
         return {"data": {"marked": count}}
 
     @app.websocket("/ws/notifications/{user_id}")
-    async def websocket_endpoint(websocket: WebSocket, user_id: int):
+    async def websocket_endpoint(websocket: WebSocket, user_id: str):
         """WebSocket endpoint for real-time notifications."""
         await manager.connect(websocket, user_id)
         try:

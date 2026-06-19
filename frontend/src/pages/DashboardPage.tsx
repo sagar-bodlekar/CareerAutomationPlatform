@@ -44,8 +44,10 @@ function StatCard({ icon: Icon, label, value, trend, color }: StatCardProps) {
 export default function DashboardPage() {
   const { user } = useAuth();
 
-  // The user's id from auth context doubles as profile_id for dashboard queries
-  const profileId = user?.id ?? 0;
+  // Fetch profile by user ID to get the profile UUID
+  const { data: profile } = useProfile(user?.id ?? "");
+  // Use the profile UUID for tracking queries
+  const profileId = profile?.id ?? "";
 
   const {
     data: stats,
@@ -62,8 +64,6 @@ export default function DashboardPage() {
     error: activityErr,
     refetch: refetchActivity,
   } = useRecentActivity(profileId);
-
-  const { data: profile } = useProfile(profileId);
 
   const isLoading = statsLoading || activityLoading;
   const hasError = statsError || activityError;
