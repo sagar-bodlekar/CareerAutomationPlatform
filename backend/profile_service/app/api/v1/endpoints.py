@@ -11,6 +11,8 @@ from app.schemas import (
     CertificationUpdate,
     EducationCreate,
     EducationUpdate,
+    LanguageCreate,
+    LanguageUpdate,
     ProfileAnalyticsResponse,
     ProfileCreate,
     ProfileCreateRequest,
@@ -30,7 +32,12 @@ from app.schemas import (
     WorkExperienceResponse,
     WorkExperienceUpdate,
 )
+from app.schemas.certification import CertificationResponse
+from app.schemas.education import EducationResponse
+from app.schemas.language import LanguageResponse
+from app.schemas.project import ProjectResponse
 from app.schemas.skill import SkillResponse
+from app.schemas.social_link import SocialLinkResponse
 from app.services.profile_service import ProfileService
 from app.api.v1.dependencies import get_profile_service
 
@@ -365,6 +372,150 @@ async def import_profile(
         data=ProfileResponse.model_validate(profile),
         message="Profile imported",
     )
+
+
+# ─── Analytics ───────────────────────────────────────────────
+
+
+# ─── Social Links ─────────────────────────────────────────────
+
+
+@router.post("/profiles/{profile_id}/social-links", status_code=201, response_model=APIResponse)
+async def add_social_link(
+    profile_id: UUID,
+    link_data: SocialLinkCreate,
+    service: ProfileService = Depends(get_profile_service),
+):
+    """Add a social link to a profile."""
+    link = await service.add_social_link(profile_id, link_data)
+    if link is None:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return APIResponse(
+        data=SocialLinkResponse.model_validate(link),
+        message="Social link added",
+    )
+
+
+@router.put("/social-links/{link_id}", response_model=APIResponse)
+async def update_social_link(
+    link_id: UUID,
+    link_data: SocialLinkUpdate,
+    service: ProfileService = Depends(get_profile_service),
+):
+    """Update a social link."""
+    link = await service.update_social_link(link_id, link_data)
+    if link is None:
+        raise HTTPException(status_code=404, detail="Social link not found")
+    return APIResponse(
+        data=SocialLinkResponse.model_validate(link),
+        message="Social link updated",
+    )
+
+
+@router.delete("/social-links/{link_id}", response_model=APIResponse)
+async def delete_social_link(
+    link_id: UUID,
+    service: ProfileService = Depends(get_profile_service),
+):
+    """Delete a social link."""
+    deleted = await service.delete_social_link(link_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Social link not found")
+    return APIResponse(message="Social link deleted")
+
+
+# ─── Certifications ───────────────────────────────────────────
+
+
+@router.post("/profiles/{profile_id}/certifications", status_code=201, response_model=APIResponse)
+async def add_certification(
+    profile_id: UUID,
+    cert_data: CertificationCreate,
+    service: ProfileService = Depends(get_profile_service),
+):
+    """Add a certification to a profile."""
+    cert = await service.add_certification(profile_id, cert_data)
+    if cert is None:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return APIResponse(
+        data=CertificationResponse.model_validate(cert),
+        message="Certification added",
+    )
+
+
+@router.put("/certifications/{cert_id}", response_model=APIResponse)
+async def update_certification(
+    cert_id: UUID,
+    cert_data: CertificationUpdate,
+    service: ProfileService = Depends(get_profile_service),
+):
+    """Update a certification."""
+    cert = await service.update_certification(cert_id, cert_data)
+    if cert is None:
+        raise HTTPException(status_code=404, detail="Certification not found")
+    return APIResponse(
+        data=CertificationResponse.model_validate(cert),
+        message="Certification updated",
+    )
+
+
+@router.delete("/certifications/{cert_id}", response_model=APIResponse)
+async def delete_certification(
+    cert_id: UUID,
+    service: ProfileService = Depends(get_profile_service),
+):
+    """Delete a certification."""
+    deleted = await service.delete_certification(cert_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Certification not found")
+    return APIResponse(message="Certification deleted")
+
+
+# ─── Languages ─────────────────────────────────────────────────
+
+
+@router.post("/profiles/{profile_id}/languages", status_code=201, response_model=APIResponse)
+async def add_language(
+    profile_id: UUID,
+    lang_data: LanguageCreate,
+    service: ProfileService = Depends(get_profile_service),
+):
+    """Add a language to a profile."""
+    lang = await service.add_language(profile_id, lang_data)
+    if lang is None:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return APIResponse(
+        data=LanguageResponse.model_validate(lang),
+        message="Language added",
+    )
+
+
+@router.put("/languages/{lang_id}", response_model=APIResponse)
+async def update_language(
+    lang_id: UUID,
+    lang_data: LanguageUpdate,
+    service: ProfileService = Depends(get_profile_service),
+):
+    """Update a language entry."""
+    lang = await service.update_language(lang_id, lang_data)
+    if lang is None:
+        raise HTTPException(status_code=404, detail="Language not found")
+    return APIResponse(
+        data=LanguageResponse.model_validate(lang),
+        message="Language updated",
+    )
+
+
+@router.delete("/languages/{lang_id}", response_model=APIResponse)
+async def delete_language(
+    lang_id: UUID,
+    service: ProfileService = Depends(get_profile_service),
+):
+    """Delete a language entry."""
+    deleted = await service.delete_language(lang_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Language not found")
+    return APIResponse(message="Language deleted")
 
 
 # ─── Analytics ───────────────────────────────────────────────

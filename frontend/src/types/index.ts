@@ -24,6 +24,8 @@ export interface Profile {
   education: Education[];
   projects: Project[];
   certifications: Certification[];
+  languages: Language[];
+  social_links: SocialLink[];
 }
 
 export interface PersonalInfo {
@@ -36,6 +38,8 @@ export interface PersonalInfo {
   city?: string;
   state?: string;
   country?: string;
+  gender?: string;
+  pronouns?: string;
   linkedin_url?: string;
   portfolio_url?: string;
   github_url?: string;
@@ -101,12 +105,38 @@ export interface Project {
 
 export interface Certification {
   id: string;
+  profile_id?: string;
   name: string;
   issuer?: string;
+  url?: string;
   issue_date?: string;
-  expiry_date?: string;
+  expiration_date?: string;
+  does_not_expire?: boolean;
   credential_id?: string;
-  credential_url?: string;
+  description?: string;
+  order?: number;
+  created_at?: string;
+}
+
+export interface SocialLink {
+  id: string;
+  profile_id?: string;
+  platform: string;
+  url: string;
+  label?: string;
+  is_primary?: boolean;
+  order?: number;
+  created_at?: string;
+}
+
+export interface Language {
+  id: string;
+  profile_id?: string;
+  name: string;
+  proficiency: string;
+  is_native?: boolean;
+  order?: number;
+  created_at?: string;
 }
 
 export interface Job {

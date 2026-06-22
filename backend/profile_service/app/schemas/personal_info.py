@@ -23,6 +23,7 @@ class PersonalInfoCreate(BaseModel):
     date_of_birth: date | None = None
     nationality: str | None = None
     pronouns: str | None = None
+    gender: str | None = None
     avatar_url: str | None = None
 
 
@@ -65,6 +66,7 @@ class PersonalInfoResponse(BaseModel):
     date_of_birth: date | None = None
     nationality: str | None = None
     pronouns: str | None = None
+    gender: str | None = None
     avatar_url: str | None = None
     created_at: datetime
     updated_at: datetime | None = None

@@ -11,6 +11,9 @@ import {
   AlertCircle,
   ExternalLink,
   Award,
+  Globe,
+  BadgeCheck,
+  Languages,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useProfile } from "../hooks/useProfile";
@@ -24,17 +27,29 @@ import {
   useAddProject,
   useUpdateProject,
   useDeleteProject,
+  useAddSocialLink,
+  useUpdateSocialLink,
+  useDeleteSocialLink,
+  useAddCertification,
+  useUpdateCertification,
+  useDeleteCertification,
+  useAddLanguage,
+  useUpdateLanguage,
+  useDeleteLanguage,
 } from "../hooks/useProfileEntities";
 import { ProfileSkeleton } from "../components/common/Skeletons";
 import { ErrorFallback } from "../components/common/ErrorFallback";
 import { getErrorMessage } from "../utils/errorHandler";
 
-type Tab = "experience" | "education" | "projects";
+type Tab = "experience" | "education" | "projects" | "certifications" | "languages" | "social-links";
 
 const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: "experience", label: "Experience", icon: Briefcase },
   { key: "education", label: "Education", icon: BookOpen },
   { key: "projects", label: "Projects", icon: FolderGit2 },
+  { key: "certifications", label: "Certifications", icon: BadgeCheck },
+  { key: "languages", label: "Languages", icon: Languages },
+  { key: "social-links", label: "Social Links", icon: Globe },
 ];
 
 // ─── Shared form state ─────────────────────────────────────
@@ -152,9 +167,39 @@ export default function ProfileManagePage() {
   const updateProj = useUpdateProject();
   const deleteProj = useDeleteProject();
 
+  // ── Certification state ──
+  const [showCertForm, setShowCertForm] = useState(false);
+  const [editingCertId, setEditingCertId] = useState<string | null>(null);
+  const [certForm, setCertForm] = useState({ name: "", issuer: "", url: "", issue_date: "", expiration_date: "", does_not_expire: false, credential_id: "", description: "" });
+  const [certError, setCertError] = useState<string | null>(null);
+  const addCert = useAddCertification();
+  const updateCert = useUpdateCertification();
+  const deleteCert = useDeleteCertification();
+
+  // ── Language state ──
+  const [showLangForm, setShowLangForm] = useState(false);
+  const [editingLangId, setEditingLangId] = useState<string | null>(null);
+  const [langForm, setLangForm] = useState({ name: "", proficiency: "intermediate", is_native: false });
+  const [langError, setLangError] = useState<string | null>(null);
+  const addLang = useAddLanguage();
+  const updateLang = useUpdateLanguage();
+  const deleteLang = useDeleteLanguage();
+
+  // ── Social Link state ──
+  const [showLinkForm, setShowLinkForm] = useState(false);
+  const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
+  const [linkForm, setLinkForm] = useState({ platform: "", url: "", label: "", is_primary: false });
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const addLink = useAddSocialLink();
+  const updateLink = useUpdateSocialLink();
+  const deleteLink = useDeleteSocialLink();
+
   const profileIsLoading = addExp.isPending || updateExp.isPending || deleteExp.isPending ||
     addEdu.isPending || updateEdu.isPending || deleteEdu.isPending ||
-    addProj.isPending || updateProj.isPending || deleteProj.isPending;
+    addProj.isPending || updateProj.isPending || deleteProj.isPending ||
+    addCert.isPending || updateCert.isPending || deleteCert.isPending ||
+    addLang.isPending || updateLang.isPending || deleteLang.isPending ||
+    addLink.isPending || updateLink.isPending || deleteLink.isPending;
 
   // ─── Experience Handlers ─────────────────────────────────
 
@@ -336,6 +381,162 @@ export default function ProfileManagePage() {
     }
   };
 
+  // ─── Certification Handlers ─────────────────────────────
+
+  const resetCertForm = () => {
+    setCertForm({ name: "", issuer: "", url: "", issue_date: "", expiration_date: "", does_not_expire: false, credential_id: "", description: "" });
+    setEditingCertId(null);
+    setShowCertForm(false);
+    setCertError(null);
+  };
+
+  const handleEditCertification = useCallback((cert: any) => {
+    setCertForm({
+      name: cert.name ?? "",
+      issuer: cert.issuer ?? "",
+      url: cert.url ?? "",
+      issue_date: cert.issue_date ? cert.issue_date.slice(0, 10) : "",
+      expiration_date: cert.expiration_date ? cert.expiration_date.slice(0, 10) : "",
+      does_not_expire: cert.does_not_expire ?? false,
+      credential_id: cert.credential_id ?? "",
+      description: cert.description ?? "",
+    });
+    setEditingCertId(cert.id);
+    setShowCertForm(true);
+    setCertError(null);
+  }, []);
+
+  const handleSaveCertification = async () => {
+    if (!profile) return;
+    setCertError(null);
+    try {
+      const payload = {
+        name: certForm.name,
+        issuer: certForm.issuer || undefined,
+        url: certForm.url || undefined,
+        issue_date: certForm.issue_date || undefined,
+        expiration_date: certForm.does_not_expire ? undefined : (certForm.expiration_date || undefined),
+        does_not_expire: certForm.does_not_expire,
+        credential_id: certForm.credential_id || undefined,
+        description: certForm.description || undefined,
+      };
+      if (editingCertId) {
+        await updateCert.mutateAsync({ certId: editingCertId, data: payload });
+      } else {
+        await addCert.mutateAsync({ profileId: profile.id, data: payload });
+      }
+      resetCertForm();
+    } catch (err) {
+      setCertError(getErrorMessage(err));
+    }
+  };
+
+  const handleDeleteCertification = async (certId: string) => {
+    try {
+      await deleteCert.mutateAsync(certId);
+    } catch (err) {
+      setCertError(getErrorMessage(err));
+    }
+  };
+
+  // ─── Language Handlers ──────────────────────────────────
+
+  const resetLangForm = () => {
+    setLangForm({ name: "", proficiency: "intermediate", is_native: false });
+    setEditingLangId(null);
+    setShowLangForm(false);
+    setLangError(null);
+  };
+
+  const handleEditLanguage = useCallback((lang: any) => {
+    setLangForm({
+      name: lang.name ?? "",
+      proficiency: lang.proficiency ?? "intermediate",
+      is_native: lang.is_native ?? false,
+    });
+    setEditingLangId(lang.id);
+    setShowLangForm(true);
+    setLangError(null);
+  }, []);
+
+  const handleSaveLanguage = async () => {
+    if (!profile) return;
+    setLangError(null);
+    try {
+      const payload = {
+        name: langForm.name,
+        proficiency: langForm.proficiency,
+        is_native: langForm.is_native,
+      };
+      if (editingLangId) {
+        await updateLang.mutateAsync({ langId: editingLangId, data: payload });
+      } else {
+        await addLang.mutateAsync({ profileId: profile.id, data: payload });
+      }
+      resetLangForm();
+    } catch (err) {
+      setLangError(getErrorMessage(err));
+    }
+  };
+
+  const handleDeleteLanguage = async (langId: string) => {
+    try {
+      await deleteLang.mutateAsync(langId);
+    } catch (err) {
+      setLangError(getErrorMessage(err));
+    }
+  };
+
+  // ─── Social Link Handlers ───────────────────────────────
+
+  const resetLinkForm = () => {
+    setLinkForm({ platform: "", url: "", label: "", is_primary: false });
+    setEditingLinkId(null);
+    setShowLinkForm(false);
+    setLinkError(null);
+  };
+
+  const handleEditSocialLink = useCallback((link: any) => {
+    setLinkForm({
+      platform: link.platform ?? "",
+      url: link.url ?? "",
+      label: link.label ?? "",
+      is_primary: link.is_primary ?? false,
+    });
+    setEditingLinkId(link.id);
+    setShowLinkForm(true);
+    setLinkError(null);
+  }, []);
+
+  const handleSaveSocialLink = async () => {
+    if (!profile) return;
+    setLinkError(null);
+    try {
+      const payload = {
+        platform: linkForm.platform,
+        url: linkForm.url,
+        label: linkForm.label || undefined,
+        is_primary: linkForm.is_primary,
+      };
+      if (editingLinkId) {
+        await updateLink.mutateAsync({ linkId: editingLinkId, data: payload });
+      } else {
+        await addLink.mutateAsync({ profileId: profile.id, data: payload });
+      }
+      resetLinkForm();
+    } catch (err) {
+      setLinkError(getErrorMessage(err));
+    }
+  };
+
+  const handleDeleteSocialLink = async (linkId: string) => {
+    try {
+      await deleteLink.mutateAsync(linkId);
+    } catch (err) {
+      setLinkError(getErrorMessage(err));
+    }
+  };
+
   // ─── Loading / Error states ──────────────────────────────
 
   if (isLoading) {
@@ -362,6 +563,9 @@ export default function ProfileManagePage() {
   const experiences = profile?.work_experiences ?? [];
   const educationList = profile?.education ?? [];
   const projects = profile?.projects ?? [];
+  const certifications = profile?.certifications ?? [];
+  const languages = profile?.languages ?? [];
+  const socialLinks = profile?.social_links ?? [];
 
   // ─── Render ──────────────────────────────────────────────
 
@@ -392,7 +596,7 @@ export default function ProfileManagePage() {
         {TABS.map((tab) => (
           <button
             key={tab.key}
-            onClick={() => { setActiveTab(tab.key); setShowExpForm(false); setShowEduForm(false); setShowProjForm(false); }}
+            onClick={() => { setActiveTab(tab.key); setShowExpForm(false); setShowEduForm(false); setShowProjForm(false); setShowCertForm(false); setShowLangForm(false); setShowLinkForm(false); }}
             className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
               activeTab === tab.key
                 ? "bg-white text-gray-900 shadow-sm"
@@ -816,6 +1020,354 @@ export default function ProfileManagePage() {
                       ))}
                     </div>
                   )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ─── CERTIFICATIONS TAB ────────────────────────────── */}
+      {activeTab === "certifications" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Certifications ({certifications.length})
+            </h2>
+            {!showCertForm && (
+              <button
+                onClick={() => { setShowCertForm(true); setCertForm({ name: "", issuer: "", url: "", issue_date: "", expiration_date: "", does_not_expire: false, credential_id: "", description: "" }); setEditingCertId(null); setCertError(null); }}
+                className="flex items-center gap-2 rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                Add Certification
+              </button>
+            )}
+          </div>
+
+          {certError && (
+            <div className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {certError}
+            </div>
+          )}
+
+          {showCertForm && (
+            <div className="rounded-xl border bg-white p-6 shadow-sm">
+              <h3 className="mb-4 text-base font-semibold text-gray-900">
+                {editingCertId ? "Edit Certification" : "New Certification"}
+              </h3>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">Certification Name *</label>
+                  <input type="text" value={certForm.name} onChange={(e) => setCertForm((f) => ({ ...f, name: e.target.value }))}
+                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Issuer</label>
+                  <input type="text" value={certForm.issuer} onChange={(e) => setCertForm((f) => ({ ...f, issuer: e.target.value }))}
+                    placeholder="e.g., AWS, Google, Microsoft" className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Credential ID</label>
+                  <input type="text" value={certForm.credential_id} onChange={(e) => setCertForm((f) => ({ ...f, credential_id: e.target.value }))}
+                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Issue Date</label>
+                  <input type="date" value={certForm.issue_date} onChange={(e) => setCertForm((f) => ({ ...f, issue_date: e.target.value }))}
+                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Expiration Date</label>
+                  <input type="date" value={certForm.expiration_date} onChange={(e) => setCertForm((f) => ({ ...f, expiration_date: e.target.value }))}
+                    disabled={certForm.does_not_expire}
+                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-50" />
+                </div>
+                <div className="flex items-end">
+                  <label className="flex items-center gap-2 text-sm text-gray-700">
+                    <input type="checkbox" checked={certForm.does_not_expire} onChange={(e) => setCertForm((f) => ({ ...f, does_not_expire: e.target.checked }))}
+                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                    Does not expire
+                  </label>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">URL</label>
+                  <input type="url" value={certForm.url} onChange={(e) => setCertForm((f) => ({ ...f, url: e.target.value }))}
+                    placeholder="https://credential.example.com/..." className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500" />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">Description</label>
+                  <textarea rows={2} value={certForm.description} onChange={(e) => setCertForm((f) => ({ ...f, description: e.target.value }))}
+                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500" />
+                </div>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <button onClick={handleSaveCertification} disabled={profileIsLoading || !certForm.name}
+                  className="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 disabled:opacity-50 transition-colors">
+                  <Save className="h-4 w-4" />
+                  {editingCertId ? "Update" : "Save"}
+                </button>
+                <button onClick={resetCertForm} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {certifications.length === 0 && !showCertForm ? (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white py-12 text-center">
+              <BadgeCheck className="h-8 w-8 text-gray-300 mb-3" />
+              <p className="text-sm font-medium text-gray-900">No certifications added yet</p>
+              <p className="mt-1 text-xs text-gray-500">Add professional certifications to boost your resume</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {certifications.map((cert) => (
+                <div key={cert.id} className="rounded-xl border bg-white p-4 shadow-sm">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="font-semibold text-gray-900">{cert.name}</h4>
+                      {cert.issuer && <p className="text-sm text-gray-600">{cert.issuer}</p>}
+                      <p className="text-xs text-gray-400 mt-1">
+                        {cert.issue_date?.slice(0, 7) ?? ""}{cert.issuer ? ` · ${cert.issuer}` : ""}
+                        {cert.credential_id ? ` · ID: ${cert.credential_id}` : ""}
+                      </p>
+                      {cert.url && (
+                        <a href={cert.url} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-500">
+                          View credential <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => handleEditCertification(cert)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-primary-600 transition-colors" title="Edit">
+                        <Save className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => handleDeleteCertification(cert.id)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-red-600 transition-colors" title="Delete">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  {cert.description && <p className="mt-2 text-sm text-gray-600 line-clamp-2">{cert.description}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ─── LANGUAGES TAB ─────────────────────────────────── */}
+      {activeTab === "languages" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Languages ({languages.length})
+            </h2>
+            {!showLangForm && (
+              <button
+                onClick={() => { setShowLangForm(true); setLangForm({ name: "", proficiency: "intermediate", is_native: false }); setEditingLangId(null); setLangError(null); }}
+                className="flex items-center gap-2 rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                Add Language
+              </button>
+            )}
+          </div>
+
+          {langError && (
+            <div className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {langError}
+            </div>
+          )}
+
+          {showLangForm && (
+            <div className="rounded-xl border bg-white p-6 shadow-sm">
+              <h3 className="mb-4 text-base font-semibold text-gray-900">
+                {editingLangId ? "Edit Language" : "New Language"}
+              </h3>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Language *</label>
+                  <input type="text" value={langForm.name} onChange={(e) => setLangForm((f) => ({ ...f, name: e.target.value }))}
+                    placeholder="e.g., English, Spanish, French" className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Proficiency</label>
+                  <select value={langForm.proficiency} onChange={(e) => setLangForm((f) => ({ ...f, proficiency: e.target.value }))}
+                    className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500">
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                    <option value="native">Native</option>
+                  </select>
+                </div>
+                <div className="flex items-end">
+                  <label className="flex items-center gap-2 text-sm text-gray-700">
+                    <input type="checkbox" checked={langForm.is_native} onChange={(e) => setLangForm((f) => ({ ...f, is_native: e.target.checked }))}
+                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                    Native language
+                  </label>
+                </div>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <button onClick={handleSaveLanguage} disabled={profileIsLoading || !langForm.name}
+                  className="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 disabled:opacity-50 transition-colors">
+                  <Save className="h-4 w-4" />
+                  {editingLangId ? "Update" : "Save"}
+                </button>
+                <button onClick={resetLangForm} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {languages.length === 0 && !showLangForm ? (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white py-12 text-center">
+              <Languages className="h-8 w-8 text-gray-300 mb-3" />
+              <p className="text-sm font-medium text-gray-900">No languages added yet</p>
+              <p className="mt-1 text-xs text-gray-500">Add languages to enhance your resume for global roles</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {languages.map((lang) => (
+                <div key={lang.id} className="rounded-xl border bg-white p-4 shadow-sm">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-pink-400 to-rose-500 text-sm font-bold text-white">
+                        {lang.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900">{lang.name}</h4>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                          lang.proficiency === "native" ? "bg-green-100 text-green-700" :
+                          lang.proficiency === "advanced" ? "bg-blue-100 text-blue-700" :
+                          lang.proficiency === "intermediate" ? "bg-yellow-100 text-yellow-700" :
+                          "bg-gray-100 text-gray-600"
+                        }`}>
+                          {lang.proficiency.charAt(0).toUpperCase() + lang.proficiency.slice(1)}
+                        </span>
+                        {lang.is_native && <span className="ml-1 text-xs text-gray-400">(Native)</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => handleEditLanguage(lang)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-primary-600 transition-colors" title="Edit">
+                        <Save className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => handleDeleteLanguage(lang.id)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-red-600 transition-colors" title="Delete">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ─── SOCIAL LINKS TAB ──────────────────────────────── */}
+      {activeTab === "social-links" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">
+              Social Links ({socialLinks.length})
+            </h2>
+            {!showLinkForm && (
+              <button
+                onClick={() => { setShowLinkForm(true); setLinkForm({ platform: "", url: "", label: "", is_primary: false }); setEditingLinkId(null); setLinkError(null); }}
+                className="flex items-center gap-2 rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                Add Link
+              </button>
+            )}
+          </div>
+
+          {linkError && (
+            <div className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {linkError}
+            </div>
+          )}
+
+          {showLinkForm && (
+            <div className="rounded-xl border bg-white p-6 shadow-sm">
+              <h3 className="mb-4 text-base font-semibold text-gray-900">
+                {editingLinkId ? "Edit Social Link" : "New Social Link"}
+              </h3>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Platform *</label>
+                  <input type="text" value={linkForm.platform} onChange={(e) => setLinkForm((f) => ({ ...f, platform: e.target.value }))}
+                    placeholder="e.g., LinkedIn, GitHub, Twitter" className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Label</label>
+                  <input type="text" value={linkForm.label} onChange={(e) => setLinkForm((f) => ({ ...f, label: e.target.value }))}
+                    placeholder="e.g., Personal blog" className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500" />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">URL *</label>
+                  <input type="url" value={linkForm.url} onChange={(e) => setLinkForm((f) => ({ ...f, url: e.target.value }))}
+                    placeholder="https://linkedin.com/in/..." className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500" />
+                </div>
+                <div className="flex items-end">
+                  <label className="flex items-center gap-2 text-sm text-gray-700">
+                    <input type="checkbox" checked={linkForm.is_primary} onChange={(e) => setLinkForm((f) => ({ ...f, is_primary: e.target.checked }))}
+                      className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
+                    Primary link
+                  </label>
+                </div>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <button onClick={handleSaveSocialLink} disabled={profileIsLoading || !linkForm.platform || !linkForm.url}
+                  className="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-700 disabled:opacity-50 transition-colors">
+                  <Save className="h-4 w-4" />
+                  {editingLinkId ? "Update" : "Save"}
+                </button>
+                <button onClick={resetLinkForm} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {socialLinks.length === 0 && !showLinkForm ? (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white py-12 text-center">
+              <Globe className="h-8 w-8 text-gray-300 mb-3" />
+              <p className="text-sm font-medium text-gray-900">No social links added yet</p>
+              <p className="mt-1 text-xs text-gray-500">Add your professional profiles and personal websites</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {socialLinks.map((link) => (
+                <div key={link.id} className="rounded-xl border bg-white p-4 shadow-sm">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-400 to-purple-600 text-sm font-bold text-white">
+                        {link.platform.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900">{link.label || link.platform}</h4>
+                        <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary-600 hover:text-primary-500 hover:underline">
+                          {link.url.replace(/^https?:\/\//, "")}
+                        </a>
+                        {link.is_primary && (
+                          <span className="ml-2 inline-flex items-center rounded-full bg-primary-100 px-2 py-0.5 text-xs font-medium text-primary-700">Primary</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => handleEditSocialLink(link)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-primary-600 transition-colors" title="Edit">
+                        <Save className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => handleDeleteSocialLink(link.id)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-red-600 transition-colors" title="Delete">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

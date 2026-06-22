@@ -11,6 +11,15 @@ import {
   deleteProject,
   deleteSkill,
   bulkAddSkills,
+  addSocialLink,
+  updateSocialLink,
+  deleteSocialLink,
+  addCertification,
+  updateCertification,
+  deleteCertification,
+  addLanguage,
+  updateLanguage,
+  deleteLanguage,
 } from "../services/profiles";
 
 // ─── Experience Hooks ─────────────────────────────────────────
@@ -132,6 +141,108 @@ export function useBulkAddSkills() {
   return useMutation({
     mutationFn: ({ profileId, skills }: { profileId: string; skills: Array<{ name: string; category?: string; proficiency?: string }> }) =>
       bulkAddSkills(profileId, skills),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
+}
+
+// ─── Social Link Hooks ───────────────────────────────────────
+
+export function useAddSocialLink() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ profileId, data }: { profileId: string; data: Record<string, unknown> }) =>
+      addSocialLink(profileId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
+}
+
+export function useUpdateSocialLink() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ linkId, data }: { linkId: string; data: Record<string, unknown> }) =>
+      updateSocialLink(linkId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
+}
+
+export function useDeleteSocialLink() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (linkId: string) => deleteSocialLink(linkId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
+}
+
+// ─── Certification Hooks ─────────────────────────────────────
+
+export function useAddCertification() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ profileId, data }: { profileId: string; data: Record<string, unknown> }) =>
+      addCertification(profileId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
+}
+
+export function useUpdateCertification() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ certId, data }: { certId: string; data: Record<string, unknown> }) =>
+      updateCertification(certId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
+}
+
+export function useDeleteCertification() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (certId: string) => deleteCertification(certId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
+}
+
+// ─── Language Hooks ───────────────────────────────────────────
+
+export function useAddLanguage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ profileId, data }: { profileId: string; data: Record<string, unknown> }) =>
+      addLanguage(profileId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
+}
+
+export function useUpdateLanguage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ langId, data }: { langId: string; data: Record<string, unknown> }) =>
+      updateLanguage(langId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["profile"] });
+    },
+  });
+}
+
+export function useDeleteLanguage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (langId: string) => deleteLanguage(langId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["profile"] });
     },

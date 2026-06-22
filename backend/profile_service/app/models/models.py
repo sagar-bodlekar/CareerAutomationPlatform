@@ -65,6 +65,9 @@ class UserProfile(Base):
     certifications = relationship(
         "Certification", back_populates="profile", cascade="all, delete-orphan"
     )
+    languages = relationship(
+        "Language", back_populates="profile", cascade="all, delete-orphan"
+    )
     social_links = relationship(
         "SocialLink", back_populates="profile", cascade="all, delete-orphan"
     )
@@ -94,6 +97,7 @@ class PersonalInfo(Base):
     date_of_birth = Column(Date)
     nationality = Column(String(100))
     pronouns = Column(String(50))
+    gender = Column(String(50))
     avatar_url = Column(String(500))
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(
@@ -240,6 +244,26 @@ class Certification(Base):
 
     # Relationships
     profile = relationship("UserProfile", back_populates="certifications")
+
+
+class Language(Base):
+    """Language proficiency entry."""
+
+    __tablename__ = "languages"
+    __table_args__ = {"schema": "career"}
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    profile_id = Column(
+        UUID(as_uuid=True), ForeignKey("career.user_profiles.id"), nullable=False
+    )
+    name = Column(String(100), nullable=False)
+    proficiency = Column(String(20), default="intermediate")  # beginner, intermediate, advanced, native
+    is_native = Column(Boolean, default=False)
+    order = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    # Relationships
+    profile = relationship("UserProfile", back_populates="languages")
 
 
 class SocialLink(Base):

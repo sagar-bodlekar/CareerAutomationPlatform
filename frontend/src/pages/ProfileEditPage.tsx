@@ -15,11 +15,11 @@ interface FormState {
   location: string;
   headline: string;
   summary: string;
-  linkedin_url: string;
-  github_url: string;
-  portfolio_url: string;
-  website_url: string;
+  gender: string;
+  pronouns: string;
 }
+
+const GENDER_OPTIONS = ["Male", "Female", "Non-binary", "Prefer not to say"];
 
 const emptyForm: FormState = {
   full_name: "",
@@ -28,10 +28,8 @@ const emptyForm: FormState = {
   location: "",
   headline: "",
   summary: "",
-  linkedin_url: "",
-  github_url: "",
-  portfolio_url: "",
-  website_url: "",
+  gender: "",
+  pronouns: "",
 };
 
 export default function ProfileEditPage() {
@@ -48,11 +46,13 @@ export default function ProfileEditPage() {
   const createProfileMutation = useCreateProfile();
 
   const [form, setForm] = useState<FormState>(emptyForm);
-  const [initialized, setInitialized] = useState(false);
+  const [saveVersion, setSaveVersion] = useState(0); // Incremented after each save to trigger form refresh
 
-  // Initialize form from profile data
+  // Initialize / refresh form from profile data (on load AND after save)
+  // Uses profile?.id (stable) instead of profile (unstable ref) to avoid
+  // resetting unsaved edits during background refetches
   useEffect(() => {
-    if (profile && !initialized) {
+    if (profile) {
       const pi = profile.personal_info;
       setForm({
         full_name: pi?.full_name ?? "",
@@ -61,14 +61,12 @@ export default function ProfileEditPage() {
         location: pi?.city ?? pi?.location ?? "",
         headline: profile.headline ?? "",
         summary: profile.summary ?? "",
-        linkedin_url: pi?.linkedin_url ?? "",
-        github_url: pi?.github_url ?? "",
-        portfolio_url: pi?.portfolio_url ?? "",
-        website_url: pi?.website_url ?? "",
+        gender: pi?.gender ?? "",
+        pronouns: pi?.pronouns ?? "",
       });
-      setInitialized(true);
     }
-  }, [profile, initialized]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id, saveVersion]);
 
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -88,6 +86,8 @@ export default function ProfileEditPage() {
         email: form.email,
         phone: form.phone || undefined,
         city: form.location || undefined,
+        gender: form.gender || undefined,
+        pronouns: form.pronouns || undefined,
       },
     };
 
@@ -98,7 +98,6 @@ export default function ProfileEditPage() {
           userId: user?.id ?? "",
           data: payload as Partial<Profile>,
         });
-        // The refetch happens automatically via invalidateQueries
       } else {
         // Profile exists — update it
         await updateProfileMutation.mutateAsync({
@@ -106,6 +105,8 @@ export default function ProfileEditPage() {
           data: payload as Partial<Profile>,
         });
       }
+      // Re-populate form with saved data (triggers the useEffect above)
+      setSaveVersion((v) => v + 1);
     } catch (err) {
       setSaveError(getErrorMessage(err));
     }
@@ -193,11 +194,35 @@ export default function ProfileEditPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Phone</label>
+              <label className="block text-sm font-medium text-gray-700">Mobile Number</label>
               <input
                 type="tel"
                 value={form.phone}
                 onChange={handleChange("phone")}
+                placeholder="+1-555-0100"
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Gender</label>
+              <select
+                value={form.gender}
+                onChange={(e) => setForm((prev) => ({ ...prev, gender: e.target.value }))}
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              >
+                <option value="">Select gender</option>
+                {GENDER_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Pronouns</label>
+              <input
+                type="text"
+                value={form.pronouns}
+                onChange={handleChange("pronouns")}
+                placeholder="e.g., they/them, she/her, he/him"
                 className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
               />
             </div>
@@ -233,50 +258,10 @@ export default function ProfileEditPage() {
           </div>
         </div>
 
-        {/* Social Links */}
-        <div className="rounded-xl border bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">Social Links</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">LinkedIn URL</label>
-              <input
-                type="url"
-                value={form.linkedin_url}
-                onChange={handleChange("linkedin_url")}
-                placeholder="https://linkedin.com/in/..."
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">GitHub URL</label>
-              <input
-                type="url"
-                value={form.github_url}
-                onChange={handleChange("github_url")}
-                placeholder="https://github.com/..."
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Portfolio URL</label>
-              <input
-                type="url"
-                value={form.portfolio_url}
-                onChange={handleChange("portfolio_url")}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Website</label>
-              <input
-                type="url"
-                value={form.website_url}
-                onChange={handleChange("website_url")}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-              />
-            </div>
-          </div>
-        </div>
+        <p className="text-xs text-gray-400 -mt-4">
+          Manage your social links (LinkedIn, GitHub, etc.) in the{' '}
+          <Link to="/profile/manage" className="text-primary-600 hover:text-primary-500 underline">Manage Profile Data</Link> section.
+        </p>
 
         {/* Submit button inside form */}
         <div className="flex justify-end">

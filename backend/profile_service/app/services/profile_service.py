@@ -10,6 +10,7 @@ from app.models.enums import SkillProficiency
 from app.models.models import (
     Certification,
     Education,
+    Language,
     PersonalInfo,
     Project,
     Skill,
@@ -40,6 +41,7 @@ class ProfileService:
         selectinload(UserProfile.education),
         selectinload(UserProfile.projects),
         selectinload(UserProfile.certifications),
+        selectinload(UserProfile.languages),
         selectinload(UserProfile.social_links),
     ]
 
@@ -109,7 +111,7 @@ class ProfileService:
         await self.session.flush()
         await self.session.refresh(profile, attribute_names=[
             "personal_info", "skills", "work_experiences",
-            "education", "projects", "certifications", "social_links",
+            "education", "projects", "certifications", "languages", "social_links",
         ])
         return profile
 
@@ -355,6 +357,119 @@ class ProfileService:
         if proj is None:
             return False
         await self.session.delete(proj)
+        await self.session.flush()
+        return True
+
+    # ─── Analytics ──────────────────────────────────────────
+
+    # ─── Social Links ───────────────────────────────────────────
+
+    async def add_social_link(self, profile_id: UUID, link_data) -> SocialLink | None:
+        """Add a social link to a profile."""
+        profile = await self.session.get(UserProfile, profile_id)
+        if profile is None:
+            return None
+        link = SocialLink(profile_id=profile_id, **link_data.model_dump(exclude_none=True))
+        self.session.add(link)
+        await self.session.flush()
+        return link
+
+    async def update_social_link(self, link_id: UUID, link_data) -> SocialLink | None:
+        """Update a social link."""
+        result = await self.session.execute(
+            select(SocialLink).where(SocialLink.id == link_id)
+        )
+        link = result.scalar_one_or_none()
+        if link is None:
+            return None
+        for field, value in link_data.model_dump(exclude_none=True).items():
+            setattr(link, field, value)
+        await self.session.flush()
+        return link
+
+    async def delete_social_link(self, link_id: UUID) -> bool:
+        """Delete a social link."""
+        result = await self.session.execute(
+            select(SocialLink).where(SocialLink.id == link_id)
+        )
+        link = result.scalar_one_or_none()
+        if link is None:
+            return False
+        await self.session.delete(link)
+        await self.session.flush()
+        return True
+
+    # ─── Certifications ────────────────────────────────────────
+
+    async def add_certification(self, profile_id: UUID, cert_data) -> Certification | None:
+        """Add a certification to a profile."""
+        profile = await self.session.get(UserProfile, profile_id)
+        if profile is None:
+            return None
+        cert = Certification(profile_id=profile_id, **cert_data.model_dump(exclude_none=True))
+        self.session.add(cert)
+        await self.session.flush()
+        return cert
+
+    async def update_certification(self, cert_id: UUID, cert_data) -> Certification | None:
+        """Update a certification."""
+        result = await self.session.execute(
+            select(Certification).where(Certification.id == cert_id)
+        )
+        cert = result.scalar_one_or_none()
+        if cert is None:
+            return None
+        for field, value in cert_data.model_dump(exclude_none=True).items():
+            setattr(cert, field, value)
+        await self.session.flush()
+        return cert
+
+    async def delete_certification(self, cert_id: UUID) -> bool:
+        """Delete a certification."""
+        result = await self.session.execute(
+            select(Certification).where(Certification.id == cert_id)
+        )
+        cert = result.scalar_one_or_none()
+        if cert is None:
+            return False
+        await self.session.delete(cert)
+        await self.session.flush()
+        return True
+
+    # ─── Languages ─────────────────────────────────────────────
+
+    async def add_language(self, profile_id: UUID, lang_data) -> Language | None:
+        """Add a language to a profile."""
+        profile = await self.session.get(UserProfile, profile_id)
+        if profile is None:
+            return None
+        lang = Language(profile_id=profile_id, **lang_data.model_dump(exclude_none=True))
+        self.session.add(lang)
+        await self.session.flush()
+        return lang
+
+    async def update_language(self, lang_id: UUID, lang_data) -> Language | None:
+        """Update a language entry."""
+        result = await self.session.execute(
+            select(Language).where(Language.id == lang_id)
+        )
+        lang = result.scalar_one_or_none()
+        if lang is None:
+            return None
+        for field, value in lang_data.model_dump(exclude_none=True).items():
+            setattr(lang, field, value)
+        await self.session.flush()
+        return lang
+
+    async def delete_language(self, lang_id: UUID) -> bool:
+        """Delete a language entry."""
+        result = await self.session.execute(
+            select(Language).where(Language.id == lang_id)
+        )
+        lang = result.scalar_one_or_none()
+        if lang is None:
+            return False
+        await self.session.delete(lang)
         await self.session.flush()
         return True
 

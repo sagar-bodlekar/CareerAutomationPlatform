@@ -3,6 +3,7 @@
 from .models import (
     Certification,
     Education,
+    Language,
     PersonalInfo,
     Project,
     Skill,
@@ -19,5 +20,6 @@ __all__ = [
     "Education",
     "Project",
     "Certification",
+    "Language",
     "SocialLink",
 ]

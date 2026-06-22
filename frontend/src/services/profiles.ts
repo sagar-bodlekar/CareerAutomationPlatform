@@ -1,5 +1,5 @@
 import { createItem, updateItem, getById, deleteItem } from "./api";
-import type { Profile, WorkExperience, Education, Project, Skill } from "../types";
+import type { Profile, WorkExperience, Education, Project, Skill, SocialLink, Certification, Language } from "../types";
 
 // Look up a profile by auth user ID (not profile ID)
 // The backend has a dedicated endpoint for this
@@ -80,4 +80,46 @@ export async function deleteSkill(skillId: string): Promise<void> {
 
 export async function bulkAddSkills(profileId: string, skills: Array<{ name: string; category?: string; proficiency?: string }>): Promise<Skill[]> {
   return createItem(`/profiles/${profileId}/skills/bulk`, { skills });
+}
+
+// ─── Social Links ────────────────────────────────────────────
+
+export async function addSocialLink(profileId: string, data: Record<string, unknown>): Promise<SocialLink> {
+  return createItem(`/profiles/${profileId}/social-links`, data);
+}
+
+export async function updateSocialLink(linkId: string, data: Record<string, unknown>): Promise<SocialLink> {
+  return updateItem(`/social-links/${linkId}`, data);
+}
+
+export async function deleteSocialLink(linkId: string): Promise<void> {
+  return deleteItem(`/social-links/${linkId}`);
+}
+
+// ─── Certifications ──────────────────────────────────────────
+
+export async function addCertification(profileId: string, data: Record<string, unknown>): Promise<Certification> {
+  return createItem(`/profiles/${profileId}/certifications`, data);
+}
+
+export async function updateCertification(certId: string, data: Record<string, unknown>): Promise<Certification> {
+  return updateItem(`/certifications/${certId}`, data);
+}
+
+export async function deleteCertification(certId: string): Promise<void> {
+  return deleteItem(`/certifications/${certId}`);
+}
+
+// ─── Languages ────────────────────────────────────────────────
+
+export async function addLanguage(profileId: string, data: Record<string, unknown>): Promise<Language> {
+  return createItem(`/profiles/${profileId}/languages`, data);
+}
+
+export async function updateLanguage(langId: string, data: Record<string, unknown>): Promise<Language> {
+  return updateItem(`/languages/${langId}`, data);
+}
+
+export async function deleteLanguage(langId: string): Promise<void> {
+  return deleteItem(`/languages/${langId}`);
 }

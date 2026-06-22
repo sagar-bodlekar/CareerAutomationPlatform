@@ -11,6 +11,7 @@ from app.schemas.experience import WorkExperienceResponse
 from app.schemas.personal_info import PersonalInfoCreate, PersonalInfoResponse, PersonalInfoUpdate
 from app.schemas.project import ProjectResponse
 from app.schemas.skill import SkillCreate, SkillResponse, SkillUpdate
+from app.schemas.language import LanguageResponse
 from app.schemas.social_link import SocialLinkCreate, SocialLinkResponse
 
 
@@ -94,6 +95,7 @@ class ProfileResponse(BaseModel):
     education: list[EducationResponse] = Field(default_factory=list)
     projects: list[ProjectResponse] = Field(default_factory=list)
     certifications: list[CertificationResponse] = Field(default_factory=list)
+    languages: list[LanguageResponse] = Field(default_factory=list)
     social_links: list[SocialLinkResponse] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}

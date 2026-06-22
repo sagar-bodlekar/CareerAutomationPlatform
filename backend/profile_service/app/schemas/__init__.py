@@ -16,6 +16,7 @@ from app.schemas.profile import (
 )
 from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate
 from app.schemas.skill import SkillBulkCreateRequest, SkillCreate, SkillResponse, SkillUpdate
+from app.schemas.language import LanguageCreate, LanguageResponse, LanguageUpdate
 from app.schemas.social_link import SocialLinkCreate, SocialLinkResponse, SocialLinkUpdate
 
 __all__ = [
@@ -53,6 +54,10 @@ __all__ = [
     "CertificationCreate",
     "CertificationUpdate",
     "CertificationResponse",
+    # Language
+    "LanguageCreate",
+    "LanguageUpdate",
+    "LanguageResponse",
     # SocialLink
     "SocialLinkCreate",
     "SocialLinkUpdate",

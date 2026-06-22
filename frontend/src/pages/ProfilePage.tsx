@@ -2,14 +2,17 @@ import { Link } from "react-router-dom";
 import {
   Mail,
   MapPin,
-  Github,
-  Linkedin,
   Edit3,
   Award,
   BookOpen,
   FolderGit2,
   Briefcase,
   UserPlus,
+  Globe,
+  BadgeCheck,
+  Languages,
+  Phone,
+  CircleUser,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useProfile } from "../hooks/useProfile";
@@ -150,21 +153,31 @@ export default function ProfilePage() {
                   <Mail className="h-3.5 w-3.5" /> {pi.email}
                 </span>
               )}
+              {pi?.phone && (
+                <span className="flex items-center gap-1">
+                  <Phone className="h-3.5 w-3.5" /> {pi.phone}
+                </span>
+              )}
               {pi?.location && (
                 <span className="flex items-center gap-1">
                   <MapPin className="h-3.5 w-3.5" /> {pi.location}
                 </span>
               )}
-              {pi?.linkedin_url && (
+              {pi?.gender && (
                 <span className="flex items-center gap-1">
-                  <Linkedin className="h-3.5 w-3.5" /> {pi.linkedin_url.replace(/^https?:\/\//, "")}
+                  <CircleUser className="h-3.5 w-3.5" /> {pi.gender}
                 </span>
               )}
-              {pi?.github_url && (
-                <span className="flex items-center gap-1">
-                  <Github className="h-3.5 w-3.5" /> {pi.github_url.replace(/^https?:\/\//, "")}
+              {pi?.pronouns && (
+                <span className="flex items-center gap-1 text-xs text-gray-400 italic">
+                  {pi.pronouns}
                 </span>
               )}
+              {profile.social_links?.map((link) => (
+                <span key={link.id} className="flex items-center gap-1">
+                  <Globe className="h-3.5 w-3.5" /> {link.url.replace(/^https?:\/\//, "")}
+                </span>
+              ))}
             </div>
           </div>
         </div>
@@ -271,6 +284,62 @@ export default function ProfilePage() {
           ) : (
             <div className="flex items-center justify-center py-8 text-sm text-gray-400">
               Add projects to showcase your work
+            </div>
+          )}
+        </div>
+
+        {/* Certifications */}
+        <div className="rounded-xl border bg-white p-6 shadow-sm">
+          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900">
+            <BadgeCheck className="h-5 w-5 text-amber-500" /> Certifications
+          </h3>
+          {profile.certifications && profile.certifications.length > 0 ? (
+            <div className="space-y-4">
+              {profile.certifications.map((cert) => (
+                <div key={cert.id} className="border-l-2 border-amber-200 pl-4">
+                  <p className="font-semibold text-gray-900">{cert.name}</p>
+                  {cert.issuer && (
+                    <p className="text-sm text-gray-500">{cert.issuer}</p>
+                  )}
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {cert.issue_date?.slice(0, 7) ?? ""}
+                    {cert.credential_id ? ` · ID: ${cert.credential_id}` : ""}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-8 text-sm text-gray-400">
+              No certifications yet
+            </div>
+          )}
+        </div>
+
+        {/* Languages */}
+        <div className="rounded-xl border bg-white p-6 shadow-sm">
+          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900">
+            <Languages className="h-5 w-5 text-pink-500" /> Languages
+          </h3>
+          {profile.languages && profile.languages.length > 0 ? (
+            <div className="space-y-3">
+              {profile.languages.map((lang) => (
+                <div key={lang.id} className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-900">{lang.name}</span>
+                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                    lang.proficiency === "native" ? "bg-green-100 text-green-700" :
+                    lang.proficiency === "advanced" ? "bg-blue-100 text-blue-700" :
+                    lang.proficiency === "intermediate" ? "bg-yellow-100 text-yellow-700" :
+                    "bg-gray-100 text-gray-600"
+                  }`}>
+                    {lang.proficiency.charAt(0).toUpperCase() + lang.proficiency.slice(1)}
+                    {lang.is_native ? " (Native)" : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center py-8 text-sm text-gray-400">
+              No languages added
             </div>
           )}
         </div>
