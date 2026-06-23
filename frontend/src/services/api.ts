@@ -1,6 +1,23 @@
 import axios from "axios";
 import type { ApiResponse, PaginatedResponse } from "../types";
 
+// Extend InternalAxiosRequestConfig to include custom meta property
+declare module "axios" {
+  interface InternalAxiosRequestConfig {
+    meta?: {
+      requestStartedAt?: number;
+    };
+    _retryCount?: number;
+    _retry?: boolean;
+  }
+}
+
+// ── Configuration ────────────────────────────────────────
+
+const DEFAULT_TIMEOUT = 30_000;         // 30s default
+const UPLOAD_TIMEOUT = 120_000;         // 120s for file uploads
+const MAX_RETRIES = 2;                  // Retry count for network failures
+
 // ── Token refresh queue ──────────────────────────────────
 // Prevents multiple simultaneous refresh attempts
 let isRefreshing = false;
@@ -35,62 +52,153 @@ async function refreshAccessToken(): Promise<string> {
   return access_token;
 }
 
+// ── Correlation ID generation ────────────────────────────
+
+function generateCorrelationId(): string {
+  const timestamp = Date.now().toString(36);
+  const random = Math.random().toString(36).substring(2, 8);
+  return `${timestamp}-${random}`;
+}
+
+// ── Retry-able status codes ──────────────────────────────
+
+const RETRYABLE_STATUS_CODES = [429, 500, 502, 503, 504];
+
+function isRetryableError(error: unknown): boolean {
+  if (!axios.isAxiosError(error)) return false;
+  // Network failures (no response received)
+  if (!error.response) return true;
+  // Server-side retryable status codes
+  return RETRYABLE_STATUS_CODES.includes(error.response.status);
+}
+
+// ── Axios instance ───────────────────────────────────────
+
 const api = axios.create({
   baseURL: "/api/v1",
   headers: { "Content-Type": "application/json" },
+  timeout: DEFAULT_TIMEOUT,
 });
 
-// Request interceptor: attach auth token
+// ── Request interceptor: attach auth token + correlation ID ──
+
 api.interceptors.request.use((config) => {
+  // Auth token
   const token = localStorage.getItem("access_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  // Correlation ID for request tracing
+  if (!config.headers["X-Request-ID"]) {
+    config.headers["X-Request-ID"] = generateCorrelationId();
+  }
+
+  // Timeout: use upload timeout for POST/PUT requests with FormData
+  if (config.data instanceof FormData) {
+    config.timeout = UPLOAD_TIMEOUT;
+  }
+
   return config;
 });
 
-// Response interceptor: handle 401 with token refresh queue
+// ── Response interceptor: auth refresh + retry + error logging ──
+
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Log slow responses in development
+    if (import.meta.env.DEV && response.config.meta?.requestStartedAt) {
+      const elapsed = Date.now() - response.config.meta.requestStartedAt;
+      if (elapsed > 1000) {
+        console.warn(
+          `[API Slow] ${response.config.method?.toUpperCase()} ${response.config.url} — ${elapsed}ms`,
+        );
+      }
+    }
+    return response;
+  },
   async (error) => {
+    // Skip if we already handled this in a retry attempt
     const original = error.config;
+    if (!original) return Promise.reject(error);
 
-    // Only attempt refresh on 401, and only once per request
-    if (error.response?.status !== 401 || original._retry) {
-      return Promise.reject(error);
+    // Log all API errors in development
+    if (import.meta.env.DEV) {
+      const method = original.method?.toUpperCase() ?? "?";
+      const url = original.url ?? "?";
+      const status = error.response?.status ?? "NETWORK_ERROR";
+      const correlationId = original.headers?.["X-Request-ID"] ?? "?";
+      console.error(
+        `[API Error] ${method} ${url} → ${status} (X-Request-ID: ${correlationId})`,
+        error.response?.data ?? error.message,
+      );
     }
 
-    // If a refresh is already in progress, queue this request
-    if (isRefreshing) {
-      return new Promise<string>((resolve, reject) => {
-        failedQueue.push({ resolve, reject });
-      })
-        .then((token) => {
-          original.headers.Authorization = `Bearer ${token}`;
-          return api(original);
-        })
-        .catch((err) => Promise.reject(err));
+    // ── Retry logic for network failures & retryable status codes ──
+    if (isRetryableError(error) && !original._retryCount) {
+      original._retryCount = 0;
     }
 
-    original._retry = true;
-    isRefreshing = true;
-
-    try {
-      const newToken = await refreshAccessToken();
-      processQueue(null, newToken);
-      original.headers.Authorization = `Bearer ${newToken}`;
+    if (
+      isRetryableError(error) &&
+      original._retryCount !== undefined &&
+      original._retryCount < MAX_RETRIES
+    ) {
+      original._retryCount += 1;
+      // Exponential backoff: 1s, 2s
+      const delay = original._retryCount * 1000;
+      if (import.meta.env.DEV) {
+        console.info(
+          `[API Retry] ${original.method?.toUpperCase()} ${original.url} — attempt ${original._retryCount}/${MAX_RETRIES} after ${delay}ms`,
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, delay));
       return api(original);
-    } catch (refreshError) {
-      processQueue(refreshError, null);
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
-      window.location.href = "/login";
-      return Promise.reject(refreshError);
-    } finally {
-      isRefreshing = false;
     }
+
+    // ── 401 handling with token refresh queue (only once per request) ──
+    if (error.response?.status === 401 && !original._retry) {
+      // If a refresh is already in progress, queue this request
+      if (isRefreshing) {
+        return new Promise<string>((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            original.headers.Authorization = `Bearer ${token}`;
+            return api(original);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      original._retry = true;
+      isRefreshing = true;
+
+      try {
+        const newToken = await refreshAccessToken();
+        processQueue(null, newToken);
+        original.headers.Authorization = `Bearer ${newToken}`;
+        return api(original);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        window.location.href = "/login";
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    return Promise.reject(error);
   },
 );
+
+// ── Track request start time for slow request logging ──
+api.interceptors.request.use((config) => {
+  config.meta = config.meta ?? {};
+  config.meta.requestStartedAt = Date.now();
+  return config;
+});
 
 export default api;
 

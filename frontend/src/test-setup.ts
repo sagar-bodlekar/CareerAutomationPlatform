@@ -1,10 +1,19 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
-import { afterEach, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, vi } from "vitest";
+import { server } from "./mocks/server";
 
+// Start MSW server before all tests
+beforeAll(() => server.listen({ onUnhandledRequest: "warn" }));
+
+// Reset handlers after each test (clean up any runtime handlers)
 afterEach(() => {
   cleanup();
+  server.resetHandlers();
 });
+
+// Close MSW server after all tests
+afterAll(() => server.close());
 
 // Mock window.matchMedia
 Object.defineProperty(window, "matchMedia", {
@@ -18,5 +27,15 @@ Object.defineProperty(window, "matchMedia", {
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
+  })),
+});
+
+// Mock IntersectionObserver (used by some components)
+Object.defineProperty(window, "IntersectionObserver", {
+  writable: true,
+  value: vi.fn().mockImplementation(() => ({
+    observe: vi.fn(),
+    unobserve: vi.fn(),
+    disconnect: vi.fn(),
   })),
 });

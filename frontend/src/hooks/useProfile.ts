@@ -28,11 +28,26 @@ export function useUpdateProfile() {
   return useMutation({
     mutationFn: ({ profileId, data }: { profileId: string; data: Partial<Profile> }) =>
       updateProfile(profileId, data),
+    onMutate: async () => {
+      // Cancel outgoing refetches so they don't overwrite optimistic update
+      await qc.cancelQueries({ queryKey: ["profile"] });
+
+      // Snapshot previous profile for rollback
+      const previous = qc.getQueriesData<Profile>({ queryKey: ["profile"] });
+
+      return { previous };
+    },
     onSuccess: () => {
-      // Invalidate all profile queries (cache key uses auth user ID, not profile ID)
       qc.invalidateQueries({ queryKey: ["profile"] });
-      // Profile changes affect tracking stats
       qc.invalidateQueries({ queryKey: ["tracking", "stats"] });
+    },
+    onError: (_err, _vars, context) => {
+      // Rollback to snapshot on error
+      if (context?.previous) {
+        for (const [key, data] of context.previous) {
+          qc.setQueryData(key, data);
+        }
+      }
     },
   });
 }

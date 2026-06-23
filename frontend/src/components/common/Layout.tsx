@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import { Sidebar, Navbar } from "./Navbar";
 import OfflineBanner from "./OfflineBanner";
+import ToastContainer from "./Toast";
 
 export default function Layout() {
   return (
@@ -13,6 +14,7 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+      <ToastContainer />
     </div>
   );
 }
