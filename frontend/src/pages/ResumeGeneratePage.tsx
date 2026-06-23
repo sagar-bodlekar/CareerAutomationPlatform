@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Sparkles, FileText, AlertCircle } from "lucide-react";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useAuth } from "../context/AuthContext";
 import { useCreateResume, useGenerateResume } from "../hooks/useResumes";
 import { useProfile } from "../hooks/useProfile";
@@ -11,6 +12,7 @@ import { ErrorFallback } from "../components/common/ErrorFallback";
 import { getErrorMessage } from "../utils/errorHandler";
 
 export default function ResumeGeneratePage() {
+  useDocumentTitle("Generate Resume");
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data: profile } = useProfile(user?.id ?? "");

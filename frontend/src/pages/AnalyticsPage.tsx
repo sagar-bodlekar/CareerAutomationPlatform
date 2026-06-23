@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft, Globe, Clock, Percent, BarChart3, Inbox } from "lucide-react";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useAuth } from "../context/AuthContext";
 import { useAnalytics } from "../hooks/useTracking";
 import { useProfile } from "../hooks/useProfile";
@@ -23,6 +24,7 @@ function MetricSkeleton() {
 }
 
 export default function AnalyticsPage() {
+  useDocumentTitle("Analytics");
   const { user } = useAuth();
   const { data: profile } = useProfile(user?.id ?? "");
   const profileId = profile?.id ?? "";

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Bell, BellOff } from "lucide-react";
 import NotificationList from "../components/notifications/NotificationList";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useAuth } from "../context/AuthContext";
 import { useNotifications, useUnreadCount, useMarkAsRead, useMarkAllAsRead } from "../hooks/useNotifications";
 import { ActivitySkeleton } from "../components/common/Skeletons";
@@ -9,6 +10,7 @@ import { ErrorFallback } from "../components/common/ErrorFallback";
 import { getErrorMessage } from "../utils/errorHandler";
 
 export default function NotificationsPage() {
+  useDocumentTitle("Notifications");
   const { user } = useAuth();
   const userId = user?.id ?? "";
 

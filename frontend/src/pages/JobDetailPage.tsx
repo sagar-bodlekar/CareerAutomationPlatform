@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, MapPin, Briefcase, Clock, ExternalLink, Send, BarChart3, DollarSign, AlertCircle } from "lucide-react";
 import { useJob } from "../hooks/useJobs";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useAuth } from "../context/AuthContext";
 import { useJobMatch } from "../hooks/useJobMatch";
 import { useCreateApplication } from "../hooks/useApplications";
@@ -12,6 +13,7 @@ import { formatSalary, formatRelativeTime, getScoreLabel } from "../utils/format
 import { getErrorMessage } from "../utils/errorHandler";
 
 export default function JobDetailPage() {
+  useDocumentTitle("Job Details");
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();

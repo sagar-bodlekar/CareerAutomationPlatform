@@ -12,6 +12,7 @@ import {
   Bell,
   Inbox,
 } from "lucide-react";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useAuth } from "../context/AuthContext";
 import { useTrackingStats, useFunnel, useDailyTrends } from "../hooks/useTracking";
 import { useProfile } from "../hooks/useProfile";
@@ -24,6 +25,7 @@ import { exportTrackingData } from "../services/tracking";
 import { getErrorMessage } from "../utils/errorHandler";
 
 export default function TrackingPage() {
+  useDocumentTitle("Tracking");
   const { user } = useAuth();
   const { data: profile } = useProfile(user?.id ?? "");
   const profileId = profile?.id ?? "";

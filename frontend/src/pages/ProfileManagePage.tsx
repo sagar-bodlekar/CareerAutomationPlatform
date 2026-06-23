@@ -15,6 +15,7 @@ import {
   BadgeCheck,
   Languages,
 } from "lucide-react";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useAuth } from "../context/AuthContext";
 import { useProfile } from "../hooks/useProfile";
 import {
@@ -129,6 +130,7 @@ const emptyProjectForm: ProjectForm = {
 // ─── Component ─────────────────────────────────────────────
 
 export default function ProfileManagePage() {
+  useDocumentTitle("Manage Profile");
   const { user } = useAuth();
   const {
     data: profile,

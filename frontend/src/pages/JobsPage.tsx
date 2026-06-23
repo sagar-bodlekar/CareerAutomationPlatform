@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Search, SlidersHorizontal, MapPin, Clock } from "lucide-react";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useJobs } from "../hooks/useJobs";
 import type { JobFilters } from "../hooks/useJobs";
 import JobCard from "../components/jobs/JobCard";
@@ -10,6 +11,7 @@ import { getErrorMessage } from "../utils/errorHandler";
 const PAGE_SIZE = 10;
 
 export default function JobsPage() {
+  useDocumentTitle("Browse Jobs");
   // Filter state
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");

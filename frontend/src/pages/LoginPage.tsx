@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useAuth } from "../context/AuthContext";
 import { LogIn } from "lucide-react";
 
 export default function LoginPage() {
+  useDocumentTitle("Sign In");
   const { login } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");

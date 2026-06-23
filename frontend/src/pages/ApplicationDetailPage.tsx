@@ -1,5 +1,6 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Send, Building2, FileText, Mail, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useApplication, useSubmitApplication } from "../hooks/useApplications";
 import { useApplicationEvents } from "../hooks/useApplicationEvents";
 import { ApplicationDetailSkeleton } from "../components/common/Skeletons";
@@ -10,6 +11,7 @@ import { formatDate, capitalize } from "../utils/formatters";
 import { getErrorMessage } from "../utils/errorHandler";
 
 export default function ApplicationDetailPage() {
+  useDocumentTitle("Application Details");
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const appId = Number(id);

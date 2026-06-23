@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { Link } from "react-router-dom";
 import { Save, ArrowLeft, AlertCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -44,6 +45,8 @@ export default function ProfileEditPage() {
 
   const updateProfileMutation = useUpdateProfile();
   const createProfileMutation = useCreateProfile();
+
+  useDocumentTitle("Edit Profile");
 
   const formRef = useRef<HTMLFormElement>(null);
 

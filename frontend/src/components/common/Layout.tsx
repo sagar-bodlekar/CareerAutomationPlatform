@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import { Sidebar, Navbar } from "./Navbar";
 import OfflineBanner from "./OfflineBanner";
+import ApiVersionBanner from "./ApiVersionBanner";
 import ToastContainer from "./Toast";
 
 export default function Layout() {
@@ -9,6 +10,7 @@ export default function Layout() {
       <Sidebar />
       <div className="flex flex-1 flex-col lg:pl-64">
         <OfflineBanner />
+        <ApiVersionBanner />
         <Navbar />
         <main className="flex-1 p-6">
           <Outlet />

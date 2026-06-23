@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useAuth } from "../context/AuthContext";
 import { UserPlus } from "lucide-react";
 
 export default function RegisterPage() {
+  useDocumentTitle("Create Account");
   const { register } = useAuth();
   const navigate = useNavigate();
   const [name, setName] = useState("");

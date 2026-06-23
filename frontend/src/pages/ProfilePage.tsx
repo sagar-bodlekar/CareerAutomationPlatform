@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   Mail,
@@ -19,6 +20,7 @@ import { useProfile } from "../hooks/useProfile";
 import ExperienceTimeline from "../components/profile/ExperienceTimeline";
 import { ProfileSkeleton } from "../components/common/Skeletons";
 import { ErrorFallback } from "../components/common/ErrorFallback";
+import SectionErrorBoundary from "../components/common/SectionErrorBoundary";
 import { getErrorMessage, isNotFoundError } from "../utils/errorHandler";
 
 const categoryColors: Record<string, string> = {
@@ -52,6 +54,13 @@ export default function ProfilePage() {
     error,
     refetch,
   } = useProfile(user?.id ?? "");
+
+  // MUST be before any early returns to follow Rules of Hooks
+  useEffect(() => {
+    const displayName = profile?.personal_info?.full_name || user?.email?.split("@")[0] || "User";
+    document.title = `${displayName} - Profile | DumbHorse`;
+    return () => { document.title = "DumbHorse"; };
+  }, [profile?.personal_info?.full_name, user?.email]);
 
   // Loading state
   if (isLoading) {
@@ -185,164 +194,156 @@ export default function ProfilePage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Skills */}
-        <div className="rounded-xl border bg-white p-6 shadow-sm">
-          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900">
-            <Award className="h-5 w-5 text-amber-500" /> Skills
-          </h3>
-          {profile.skills.length > 0 ? (
-            <div className="space-y-3">
-              {profile.skills.map((skill) => (
-                <div key={skill.id} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-900">{skill.name}</span>
-                    <Badge variant={skill.category}>{skill.category}</Badge>
+        <SectionErrorBoundary name="skills">
+          <div className="rounded-xl border bg-white p-6 shadow-sm">
+            <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900">
+              <Award className="h-5 w-5 text-amber-500" /> Skills
+            </h3>
+            {profile.skills.length > 0 ? (
+              <div className="space-y-3">
+                {profile.skills.map((skill) => (
+                  <div key={skill.id} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-900">{skill.name}</span>
+                      <Badge variant={skill.category}>{skill.category}</Badge>
+                    </div>
+                    <Badge variant={skill.proficiency}>{skill.proficiency}</Badge>
                   </div>
-                  <Badge variant={skill.proficiency}>{skill.proficiency}</Badge>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="py-6 text-center text-sm text-gray-400">
-              No skills added yet.
-            </div>
-          )}
-          <Link to="/profile/skills" className="mt-4 inline-block text-sm font-medium text-primary-600 hover:text-primary-500">
-            Manage skills →
-          </Link>
-        </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-6 text-center text-sm text-gray-400">No skills added yet.</div>
+            )}
+            <Link to="/profile/skills" className="mt-4 inline-block text-sm font-medium text-primary-600 hover:text-primary-500">
+              Manage skills →
+            </Link>
+          </div>
+        </SectionErrorBoundary>
 
         {/* Experience */}
-        <div className="rounded-xl border bg-white p-6 shadow-sm">
-          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900">
-            <Briefcase className="h-5 w-5 text-blue-500" /> Experience
-          </h3>
-          {(profile.work_experiences && profile.work_experiences.length > 0) ? (
-            <ExperienceTimeline experiences={profile.work_experiences} />
-          ) : (
-            <div className="py-6 text-center text-sm text-gray-400">
-              No work experience added yet.
-            </div>
-          )}
-          <Link to="/profile/manage" className="mt-4 inline-block text-sm font-medium text-primary-600 hover:text-primary-500">
-            Manage all data →
-          </Link>
-        </div>
+        <SectionErrorBoundary name="experience">
+          <div className="rounded-xl border bg-white p-6 shadow-sm">
+            <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900">
+              <Briefcase className="h-5 w-5 text-blue-500" /> Experience
+            </h3>
+            {(profile.work_experiences && profile.work_experiences.length > 0) ? (
+              <ExperienceTimeline experiences={profile.work_experiences} />
+            ) : (
+              <div className="py-6 text-center text-sm text-gray-400">No work experience added yet.</div>
+            )}
+            <Link to="/profile/manage" className="mt-4 inline-block text-sm font-medium text-primary-600 hover:text-primary-500">
+              Manage all data →
+            </Link>
+          </div>
+        </SectionErrorBoundary>
 
         {/* Education */}
-        <div className="rounded-xl border bg-white p-6 shadow-sm">
-          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900">
-            <BookOpen className="h-5 w-5 text-green-500" /> Education
-          </h3>
-          {profile.education.length > 0 ? (
-            <div className="space-y-4">
-              {profile.education.map((edu) => (
-                <div key={edu.id} className="border-l-2 border-green-200 pl-4">
-                  <p className="font-semibold text-gray-900">{edu.institution}</p>
-                  {edu.degree && (
-                    <p className="text-sm text-gray-600">
-                      {edu.degree}{edu.field ? ` in ${edu.field}` : ""}
-                    </p>
-                  )}
-                  {(edu.start_date || edu.end_date) && (
-                    <p className="text-xs text-gray-400">
-                      {edu.start_date || "—"} – {edu.end_date || "Present"}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="py-6 text-center text-sm text-gray-400">
-              No education added yet.
-            </div>
-          )}
-        </div>
+        <SectionErrorBoundary name="education">
+          <div className="rounded-xl border bg-white p-6 shadow-sm">
+            <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900">
+              <BookOpen className="h-5 w-5 text-green-500" /> Education
+            </h3>
+            {profile.education.length > 0 ? (
+              <div className="space-y-4">
+                {profile.education.map((edu) => (
+                  <div key={edu.id} className="border-l-2 border-green-200 pl-4">
+                    <p className="font-semibold text-gray-900">{edu.institution}</p>
+                    {edu.degree && (
+                      <p className="text-sm text-gray-600">{edu.degree}{edu.field ? ` in ${edu.field}` : ""}</p>
+                    )}
+                    {(edu.start_date || edu.end_date) && (
+                      <p className="text-xs text-gray-400">{edu.start_date || "—"} – {edu.end_date || "Present"}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-6 text-center text-sm text-gray-400">No education added yet.</div>
+            )}
+          </div>
+        </SectionErrorBoundary>
 
         {/* Projects */}
-        <div className="rounded-xl border bg-white p-6 shadow-sm">
-          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900">
-            <FolderGit2 className="h-5 w-5 text-purple-500" /> Projects
-          </h3>
-          {profile.projects && profile.projects.length > 0 ? (
-            <div className="space-y-4">
-              {profile.projects.map((project) => (
-                <div key={project.id} className="border-l-2 border-purple-200 pl-4">
-                  <p className="font-semibold text-gray-900">{project.name}</p>
-                  {project.description && (
-                    <p className="mt-1 text-sm text-gray-600">{project.description}</p>
-                  )}
-                  {project.technologies && project.technologies.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {project.technologies.map((tech) => (
-                        <span key={tech} className="rounded-full bg-purple-50 px-2 py-0.5 text-xs text-purple-700">{tech}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex items-center justify-center py-8 text-sm text-gray-400">
-              Add projects to showcase your work
-            </div>
-          )}
-        </div>
+        <SectionErrorBoundary name="projects">
+          <div className="rounded-xl border bg-white p-6 shadow-sm">
+            <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900">
+              <FolderGit2 className="h-5 w-5 text-purple-500" /> Projects
+            </h3>
+            {profile.projects && profile.projects.length > 0 ? (
+              <div className="space-y-4">
+                {profile.projects.map((project) => (
+                  <div key={project.id} className="border-l-2 border-purple-200 pl-4">
+                    <p className="font-semibold text-gray-900">{project.name}</p>
+                    {project.description && <p className="mt-1 text-sm text-gray-600">{project.description}</p>}
+                    {project.technologies && project.technologies.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {project.technologies.map((tech) => (
+                          <span key={tech} className="rounded-full bg-purple-50 px-2 py-0.5 text-xs text-purple-700">{tech}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-8 text-sm text-gray-400">Add projects to showcase your work</div>
+            )}
+          </div>
+        </SectionErrorBoundary>
 
         {/* Certifications */}
-        <div className="rounded-xl border bg-white p-6 shadow-sm">
-          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900">
-            <BadgeCheck className="h-5 w-5 text-amber-500" /> Certifications
-          </h3>
-          {profile.certifications && profile.certifications.length > 0 ? (
-            <div className="space-y-4">
-              {profile.certifications.map((cert) => (
-                <div key={cert.id} className="border-l-2 border-amber-200 pl-4">
-                  <p className="font-semibold text-gray-900">{cert.name}</p>
-                  {cert.issuer && (
-                    <p className="text-sm text-gray-500">{cert.issuer}</p>
-                  )}
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {cert.issue_date?.slice(0, 7) ?? ""}
-                    {cert.credential_id ? ` · ID: ${cert.credential_id}` : ""}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex items-center justify-center py-8 text-sm text-gray-400">
-              No certifications yet
-            </div>
-          )}
-        </div>
+        <SectionErrorBoundary name="certifications">
+          <div className="rounded-xl border bg-white p-6 shadow-sm">
+            <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900">
+              <BadgeCheck className="h-5 w-5 text-amber-500" /> Certifications
+            </h3>
+            {profile.certifications && profile.certifications.length > 0 ? (
+              <div className="space-y-4">
+                {profile.certifications.map((cert) => (
+                  <div key={cert.id} className="border-l-2 border-amber-200 pl-4">
+                    <p className="font-semibold text-gray-900">{cert.name}</p>
+                    {cert.issuer && <p className="text-sm text-gray-500">{cert.issuer}</p>}
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {cert.issue_date?.slice(0, 7) ?? ""}
+                      {cert.credential_id ? ` · ID: ${cert.credential_id}` : ""}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-8 text-sm text-gray-400">No certifications yet</div>
+            )}
+          </div>
+        </SectionErrorBoundary>
 
         {/* Languages */}
-        <div className="rounded-xl border bg-white p-6 shadow-sm">
-          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900">
-            <Languages className="h-5 w-5 text-pink-500" /> Languages
-          </h3>
-          {profile.languages && profile.languages.length > 0 ? (
-            <div className="space-y-3">
-              {profile.languages.map((lang) => (
-                <div key={lang.id} className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-900">{lang.name}</span>
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                    lang.proficiency === "native" ? "bg-green-100 text-green-700" :
-                    lang.proficiency === "advanced" ? "bg-blue-100 text-blue-700" :
-                    lang.proficiency === "intermediate" ? "bg-yellow-100 text-yellow-700" :
-                    "bg-gray-100 text-gray-600"
-                  }`}>
-                    {lang.proficiency.charAt(0).toUpperCase() + lang.proficiency.slice(1)}
-                    {lang.is_native ? " (Native)" : ""}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex items-center justify-center py-8 text-sm text-gray-400">
-              No languages added
-            </div>
-          )}
-        </div>
+        <SectionErrorBoundary name="languages">
+          <div className="rounded-xl border bg-white p-6 shadow-sm">
+            <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900">
+              <Languages className="h-5 w-5 text-pink-500" /> Languages
+            </h3>
+            {profile.languages && profile.languages.length > 0 ? (
+              <div className="space-y-3">
+                {profile.languages.map((lang) => (
+                  <div key={lang.id} className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-900">{lang.name}</span>
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                      lang.proficiency === "native" ? "bg-green-100 text-green-700" :
+                      lang.proficiency === "advanced" ? "bg-blue-100 text-blue-700" :
+                      lang.proficiency === "intermediate" ? "bg-yellow-100 text-yellow-700" :
+                      "bg-gray-100 text-gray-600"
+                    }`}>
+                      {lang.proficiency.charAt(0).toUpperCase() + lang.proficiency.slice(1)}
+                      {lang.is_native ? " (Native)" : ""}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-8 text-sm text-gray-400">No languages added</div>
+            )}
+          </div>
+        </SectionErrorBoundary>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Search, X, Award, Save, AlertCircle } from "lucide-react";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useAuth } from "../context/AuthContext";
 import { useProfile } from "../hooks/useProfile";
 import { useDeleteSkill, useBulkAddSkills } from "../hooks/useProfileEntities";
@@ -41,6 +42,7 @@ function Badge({ children, color }: { children: React.ReactNode; color?: string 
 }
 
 export default function SkillsPage() {
+  useDocumentTitle("Skills");
   const { user } = useAuth();
   const {
     data: profile,

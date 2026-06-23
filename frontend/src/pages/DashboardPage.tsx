@@ -1,3 +1,4 @@
+import { useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   Briefcase,
@@ -11,6 +12,8 @@ import { useAuth } from "../context/AuthContext";
 import { useTrackingStats } from "../hooks/useTracking";
 import { useRecentActivity } from "../hooks/useRecentActivity";
 import { useProfile } from "../hooks/useProfile";
+import SectionErrorBoundary from "../components/common/SectionErrorBoundary";
+import { StaleDataIndicator } from "../components/common/StaleDataIndicator";
 import { StatCardSkeleton, ActivitySkeleton } from "../components/common/Skeletons";
 import { ErrorFallback } from "../components/common/ErrorFallback";
 import { getErrorMessage } from "../utils/errorHandler";
@@ -49,12 +52,16 @@ export default function DashboardPage() {
   // Use the profile UUID for tracking queries
   const profileId = profile?.id ?? "";
 
+  const statsFetchRef = useRef(Date.now());
+  const activityFetchRef = useRef(Date.now());
+
   const {
     data: stats,
     isLoading: statsLoading,
     isError: statsError,
     error: statsErr,
     refetch: refetchStats,
+    dataUpdatedAt: statsUpdatedAt,
   } = useTrackingStats(profileId);
 
   const {
@@ -63,7 +70,12 @@ export default function DashboardPage() {
     isError: activityError,
     error: activityErr,
     refetch: refetchActivity,
+    dataUpdatedAt: activityUpdatedAt,
   } = useRecentActivity(profileId);
+
+  // Track fetch timestamps for stale data indicator
+  if (statsUpdatedAt) statsFetchRef.current = statsUpdatedAt;
+  if (activityUpdatedAt) activityFetchRef.current = activityUpdatedAt;
 
   const isLoading = statsLoading || activityLoading;
   const hasError = statsError || activityError;
@@ -71,16 +83,27 @@ export default function DashboardPage() {
   // Welcome message
   const displayName = profile?.personal_info?.full_name || user?.email?.split("@")[0] || "";
 
+  useEffect(() => {
+    document.title = displayName ? `Dashboard | ${displayName} | DumbHorse` : "Dashboard | DumbHorse";
+    return () => { document.title = "DumbHorse"; };
+  }, [displayName]);
+
   return (
     <div className="animate-fade-in space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">
-          Welcome{displayName ? `, ${displayName}` : ""}
-        </h1>
-        <p className="mt-1 text-gray-500">Here's your career activity overview</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Welcome{displayName ? `, ${displayName}` : ""}
+            </h1>
+            <p className="text-gray-500">Here's your career activity overview</p>
+          </div>
+          <StaleDataIndicator lastFetchedAt={new Date(statsFetchRef.current)} />
+        </div>
       </div>
 
       {/* Stats grid */}
+      <SectionErrorBoundary name="statistics">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {isLoading ? (
           <>
@@ -129,6 +152,7 @@ export default function DashboardPage() {
           </>
         )}
       </div>
+      </SectionErrorBoundary>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Quick actions */}
@@ -167,6 +191,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Recent activity */}
+        <SectionErrorBoundary name="recent activity">
         <div className="rounded-xl border bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-semibold text-gray-900">Recent Activity</h2>
           {activityLoading ? (
@@ -223,6 +248,7 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+        </SectionErrorBoundary>
       </div>
     </div>
   );

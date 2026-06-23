@@ -1,3 +1,4 @@
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { Link } from "react-router-dom";
 import { FileText, Plus } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -9,6 +10,7 @@ import { ErrorFallback } from "../components/common/ErrorFallback";
 import { getErrorMessage } from "../utils/errorHandler";
 
 export default function ResumesPage() {
+  useDocumentTitle("Resumes");
   const { user } = useAuth();
   const { data: profile } = useProfile(user?.id ?? "");
   const profileId = profile?.id ?? "";

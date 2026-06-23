@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Download, Sparkles, AlertCircle, FileText } from "lucide-react";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useResume } from "../hooks/useResumes";
 import { optimizeResume, getResumeDownloadUrl } from "../services/resumes";
 import { ProfileSkeleton } from "../components/common/Skeletons";
@@ -30,6 +31,7 @@ function renderContent(content: Record<string, unknown>): ContentBlock {
 }
 
 export default function ResumeDetailPage() {
+  useDocumentTitle("Resume Details");
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const resumeId = id ?? "";

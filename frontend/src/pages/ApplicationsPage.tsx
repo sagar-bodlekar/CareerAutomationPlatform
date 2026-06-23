@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { Link } from "react-router-dom";
 import { Send, Clock } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -22,6 +23,7 @@ const statusFilters = [
 ];
 
 export default function ApplicationsPage() {
+  useDocumentTitle("Applications");
   const { user } = useAuth();
   // Fetch profile to get the profile UUID for application queries
   const { data: profile } = useProfile(user?.id ?? "");
