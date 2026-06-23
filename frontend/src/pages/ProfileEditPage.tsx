@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Save, ArrowLeft, AlertCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -44,6 +44,8 @@ export default function ProfileEditPage() {
 
   const updateProfileMutation = useUpdateProfile();
   const createProfileMutation = useCreateProfile();
+
+  const formRef = useRef<HTMLFormElement>(null);
 
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saveVersion, setSaveVersion] = useState(0); // Incremented after each save to trigger form refresh
@@ -143,7 +145,7 @@ export default function ProfileEditPage() {
   // --- Populated state (also reached on 404 — shows empty form for new users) ---
   return (
     <div className="animate-fade-in space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Link to="/profile" className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
             <ArrowLeft className="h-5 w-5" />
@@ -153,6 +155,19 @@ export default function ProfileEditPage() {
             <p className="text-gray-500">Update your career information</p>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => formRef.current?.requestSubmit()}
+          disabled={isSaving}
+          className="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-primary-700 disabled:opacity-50"
+        >
+          {isSaving ? (
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+          ) : (
+            <Save className="h-4 w-4" />
+          )}
+          {isSaving ? "Saving..." : "Save Changes"}
+        </button>
       </div>
 
       {saveError && (
@@ -168,7 +183,7 @@ export default function ProfileEditPage() {
         </div>
       )}
 
-      <form onSubmit={handleSave} className="space-y-6">
+      <form ref={formRef} onSubmit={handleSave} className="space-y-6">
         {/* Personal Info */}
         <div className="rounded-xl border bg-white p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-semibold text-gray-900">Personal Information</h2>
