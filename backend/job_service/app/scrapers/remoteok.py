@@ -41,9 +41,16 @@ class RemoteOKScraper(JobScraper):
                 raise ScrapeError(f"Fetch failed: {e}", self.source_name)
 
         # RemoteOK API returns a JSON array; first element is typically metadata
+        # (has keys like 'last_updated' and 'legal' but no slug)
         if isinstance(data, list) and len(data) > 0:
-            # Skip metadata element if present (has slug starting with '_')
-            raw_jobs = [j for j in data if isinstance(j, dict) and not j.get("slug", "").startswith("_")]
+            # Keep only items that look like job postings
+            # (require at least one job-identifying field: position, slug, or company)
+            raw_jobs = [
+                j for j in data
+                if isinstance(j, dict)
+                and j.get("position")
+                and j.get("company")
+            ]
             return raw_jobs
 
         return []

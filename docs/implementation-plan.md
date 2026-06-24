@@ -1,12 +1,12 @@
 # Implementation Plan — AI Career Automation Platform
 
-> **Version:** 1.2  
-> **Status:** Active — Phases 1–11 Complete  
-> **Last Updated:** June 24, 2026  
-> **Total Phases:** 15 Core + 4 Future  
+> **Version:** 1.3  
+> **Status:** Active — Phases 1–12 Complete  
+> **Last Updated:** June 25, 2026  
+> **Total Phases:** 16 Core + 4 Future (17–20)  
 > **Phases Complete:** 1–12 (Backend + Frontend Core + Edge Case Hardening)  
 > **Next Phase:** 13 — Frontend Performance & Polish  
-> **Estimated Timeline:** Phase 13-15: ~5 weeks remaining
+> **Estimated Timeline:** Phase 13-16: ~7 weeks remaining
 
 ---
 
@@ -25,8 +25,14 @@
 11. [Phase 8: Frontend Dashboard](#11-phase-8-frontend-dashboard)
 12. [Phase 9: Email Delivery & Tracking](#12-phase-9-email-delivery--tracking)
 13. [Phase 10: Polish & Scale](#13-phase-10-polish--scale)
-14. [Future Phases](#14-future-phases)
-15. [Appendix: Quick-Reference Command Cheatsheet](#15-appendix-quick-reference-command-cheatsheet)
+14. [Phase 11: Frontend Real Data Integration](#14-phase-11-frontend-real-data-integration)
+15. [Phase 12: Frontend Edge Case Hardening](#15-phase-12-frontend-edge-case-hardening)
+16. [Phase 13: Frontend Performance & Polish](#16-phase-13-frontend-performance--polish)
+17. [Phase 14: Frontend Testing & QA](#17-phase-14-frontend-testing--qa)
+18. [Phase 15: Advanced Frontend Features](#18-phase-15-advanced-frontend-features)
+19. [Phase 16: Job Source Resilience & Scraper Replacement](#19-phase-16-job-source-resilience--scraper-replacement)
+20. [Future Phases](#20-future-phases)
+21. [Appendix: Quick-Reference Command Cheatsheet](#21-appendix-quick-reference-command-cheatsheet)
 
 ---
 
@@ -78,6 +84,9 @@ Each phase contains:
 | **P13** | Frontend Performance & Polish | 🔜 In Progress | 1.5 | Code splitting, document.title, stale data indicators |
 | **P14** | Frontend Testing & QA | ⏳ Pending | 2 | Unit tests, E2E (Playwright) |
 | **P15** | Advanced Frontend Features | ⏳ Pending | 2 | WebSocket, PWA, i18n |
+| **P16** | Job Source Resilience & Scraper Replacement | ⏳ Pending | 2 | Jooble, Indeed RSS, USAJobs, health tracking, fallback chains |
+
+**Total Phases:** 16 Core + 4 Future (17–20)
 
 ---
 
@@ -775,20 +784,31 @@ backend/job_service/alembic/versions/001_create_job_tables.py
 
 **Tasks:**
 
-- [ ] Implement abstract `JobScraper` base class:
+- [x] Implement abstract `JobScraper` base class:
   - `fetch()` — retrieve raw data from source
   - `parse()` — convert raw data to normalized Job schema
   - `deduplicate()` — check against existing jobs
   - `upsert()` — insert or update in database
-- [ ] Implement scrapers:
-  - `NaukriScraper` — scrapes naukri.com
-  - `WellfoundScraper` — scrapes wellfound.com (AngelList)
-  - `RemoteOKScraper` — scrapes remoteok.com
-  - `LinkedInScraper` — LinkedIn job search (via public API or scraping)
-  - `GenericCareerPageScraper` — configurable company career page scraper
-- [ ] Implement `JobNormalizer` — maps varied source schemas to unified `Job` schema
-- [ ] Implement `DeduplicationService` — Redis-backed dedup using job URL hash
-- [ ] Implement scraper error handling + retry logic
+- [x] Implement scrapers:
+  - `NaukriScraper` — scrapes naukri.com (API-based, **fully implemented**)
+  - `WellfoundScraper` — scrapes wellfound.com / AngelList (API-based, **fully implemented**)
+  - `RemoteOKScraper` — scrapes remoteok.com (API-based, **fully implemented**)
+  - `LinkedInScraper` — LinkedIn job search (HTML-based scraping, **implemented** — see notes below)
+  - `GenericCareerPageScraper` — configurable company career page scraper (CSS selector + JSON API, **fully implemented**)
+- [x] Implement `JobNormalizer` — maps varied source schemas to unified `Job` schema
+- [x] Implement `DeduplicationService` — Redis-backed dedup using job URL hash
+- [x] Implement scraper error handling + retry logic (ScrapeError, retry in Celery tasks)
+
+> **⚠️ Scraper Status as of Phase 16:**
+> | Source | Type | Status | Action Needed |
+> |--------|------|--------|---------------|
+> | **RemoteOK** | Public JSON API | ✅ Working | Keep — most reliable source |
+> | **GenericCareerPage** | HTML/CSS Scraper | ✅ Working | Keep — useful for specific companies |
+> | **LinkedIn** | HTML Scraper | ❌ Blocked | **Replace with Jooble + Indeed RSS** in Phase 16 |
+> | **Naukri** | Playwright (Headless) | ❌ Blocked | **Replace with Jooble (India filter)** in Phase 16 |
+> | **Wellfound** | API + HTML | ❌ Blocked | **Replace with Indeed RSS + Jooble** in Phase 16 |
+>
+> **Phase 16** (see below) replaces all 3 blocked sources with reliable API-based alternatives (Jooble, Indeed RSS, USAJobs) and adds source health tracking with automatic fallback chains.
 
 **Files to create:**
 ```
@@ -2547,29 +2567,213 @@ frontend/src/components/common/LanguageSwitcher.tsx   (NEW)
 
 ---
 
-## 19. Future Phases
+## 19. Phase 16: Job Source Resilience & Scraper Replacement
+
+**Goal:** Replace 3 broken scrapers (LinkedIn, Naukri, Wellfound) with reliable API-based alternatives, add source health tracking with automatic fallback chains, and ensure the scraping pipeline gracefully degrades when sources fail.
+
+**Services Involved:** Job Service (scrapers, scraper_service, tasks, source health)
+
+**Dependencies:** Phase 5 (Job Service — existing scraper framework)
+
+**Estimated Time:** 2 weeks
+
+---
+
+### Sprint 16.1: Source Health Tracking & Registry
+
+**Estimated Time:** 6 hours
+
+**Tasks:**
+
+- [ ] Create data-driven `SourceRegistry` that stores per-source config in a structured dict (not hardcoded in code):
+  - `type` — api, rss, scraper, govt
+  - `schedule_minutes` — scrape interval
+  - `max_failures_before_hold` — auto-disable threshold
+  - `hold_duration_minutes` — how long to hold before retry
+  - `fallbacks` — list of fallback source names
+  - `categories` — remote, india, global, startup, us-govt
+- [ ] Implement `SourceHealthService`:
+  - Tracks `consecutive_failures`, `last_run_at`, `last_run_status`, `total_jobs_found`, `avg_response_time_ms`
+  - Auto-hold logic: 3 consecutive failures → hold for 120 minutes
+  - Exponential backoff on repeated failures
+  - Alert on 3 consecutive holds
+- [ ] Store health data in `job_sources` table (existing) or Redis with TTL
+- [ ] Add health fields to `JobSource` model if needed
+
+**Files to create/modify:**
+```
+backend/job_service/app/services/source_registry.py      (NEW — config-driven registry)
+backend/job_service/app/services/source_health.py        (NEW — health tracking service)
+backend/job_service/app/schemas/source_health.py         (NEW — health schemas)
+```
+
+---
+
+### Sprint 16.2: New API-Based Sources
+
+**Estimated Time:** 8 hours
+
+**Tasks:**
+
+- [ ] Build `JoobleScraper` (`app/scrapers/jooble.py`):
+  - Free API key via registration (no credit card required)
+  - Simple REST endpoint: `https://jooble.org/api/{api_key}`
+  - Returns JSON with title, company, location, salary, description, url
+  - Support query + location filters
+  - ~200 requests/day free tier
+  - Map fields through existing `JobNormalizer`
+  - Good coverage for India, US, UK, EU markets
+
+- [ ] Build `IndeedRSSScraper` (`app/scrapers/indeed_rss.py`):
+  - Uses Indeed RSS feeds (e.g., `https://www.indeed.com/rss?q=python&l=bangalore`)
+  - XML/Atom format — parse with standard library (`xml.etree.ElementTree`)
+  - No API key needed, 100% free, stable for 20+ years
+  - Returns title, company, location, description, link, posted date
+  - Supports multiple country domains (indeed.com, indeed.co.in, indeed.co.uk)
+  - Map fields through `JobNormalizer`
+
+- [ ] Build `USAJobsScraper` (`app/scrapers/usajobs.py`):
+  - Uses USAJobs.gov API (`https://data.usajobs.gov/api/search`)
+  - Requires `Host` and `User-Agent` headers, no auth key for basic use
+  - Results limited to US federal government jobs
+  - Extremely reliable (government API)
+  - Returns title, company (agency), location, salary, description, url
+  - Map fields through `JobNormalizer`
+
+- [ ] Add all 3 scrapers to `SCRAPER_REGISTRY` in `__init__.py`
+- [ ] Add tests for each scraper (mock HTTP responses)
+
+**Files to create:**
+```
+backend/job_service/app/scrapers/jooble.py               (NEW — Jooble API scraper)
+backend/job_service/app/scrapers/indeed_rss.py           (NEW — Indeed RSS scraper)
+backend/job_service/app/scrapers/usajobs.py              (NEW — USAJobs API scraper)
+```
+
+---
+
+### Sprint 16.3: Fallback Chain & Auto-Recovery
+
+**Estimated Time:** 6 hours
+
+**Tasks:**
+
+- [ ] Implement fallback logic in `ScraperService.scrape_source()`:
+  - On failure, check if source has fallbacks defined in registry
+  - Try fallback sources in order until one succeeds
+  - Log which fallback was used and why
+  - Mark primary source as `on_hold` after `max_failures_before_hold`
+
+- [ ] Implement auto-recovery:
+  - After hold expires, try primary source once
+  - If success, clear failure count, remove hold
+  - If failure, double hold duration and try again
+
+- [ ] Update `ScraperService.scrape_all_active()`:
+  - Skip sources that are `on_hold`
+  - Activate fallback chains for each job category
+  - Aggregate results across fallbacks (avoid duplicates)
+
+- [ ] Make Celery Beat schedule dynamic:
+  - `get_beat_schedule()` reads source registry + health
+  - Only schedules sources that are not on hold
+  - Can be hot-reloaded without restarting beat
+
+- [ ] Add endpoints:
+  - `GET /api/v1/jobs/sources/health` — health dashboard
+  - `GET /api/v1/jobs/sources/{id}/health` — per-source detail
+  - `POST /api/v1/jobs/sources/{id}/unhold` — manual release
+  - `PUT /api/v1/jobs/sources/{id}/config` — update config
+
+- [ ] Add Prometheus metrics:
+  - `scraper_jobs_found_total{source}`
+  - `scraper_errors_total{source}`
+  - `scraper_duration_seconds{source}`
+  - `scraper_on_hold{source}`
+
+**Files to modify:**
+```
+backend/job_service/app/services/scraper_service.py      (add fallback logic)
+backend/job_service/app/services/source_health.py        (add auto-recovery)
+backend/job_service/app/tasks.py                         (dynamic beat schedule)
+backend/job_service/app/api/v1/endpoints.py              (add health endpoints)
+```
+
+---
+
+### Sprint 16.4: Deprecation & Cleanup
+
+**Estimated Time:** 4 hours
+
+**Tasks:**
+
+- [ ] Document deprecated scrapers in code comments/docstrings:
+  - `linkedin.py` — add deprecation warning, reference Jooble + Indeed RSS
+  - `naukri.py` (BS4 version) — add deprecation warning, reference Jooble
+  - `naukri_playwright.py` — keep as fallback, mark as fragile
+  - `wellfound.py` — add deprecation warning, reference RemoteOK + Jooble
+- [ ] Remove deprecated sources from default Celery Beat schedule in `tasks.py`:
+  - Remove `scrape-linkedin-every-60-minutes`
+  - Remove `scrape-naukri-every-120-minutes`
+  - Remove `scrape-wellfound-every-120-minutes`
+  - Add new beat tasks: `scrape-jooble`, `scrape-indeed-rss`, `scrape-usajobs`
+- [ ] Update Celery Beat schedule to use dynamic `get_beat_schedule()` instead of hardcoded dict
+- [ ] Update `docs/architecture.md` Section 4.3 to reflect new source lineup
+- [ ] Update `docs/eval.md` Phase 5 evaluation criteria to cover fallback chains
+- [ ] Full integration test: disable RemoteOK → verify Jooble fallback activates → verify jobs still flow
+
+**Files to modify:**
+```
+backend/job_service/app/scrapers/linkedin.py             (add deprecation warning)
+backend/job_service/app/scrapers/naukri.py               (add deprecation warning)
+backend/job_service/app/scrapers/wellfound.py            (add deprecation warning)
+backend/job_service/app/tasks.py                         (remove deprecated beats, add new)
+docs/architecture.md                                      (already done)
+docs/eval.md                                              (update Phase 5 criteria)
+```
+
+---
+
+### Phase 16 Verification Checklist
+
+- [ ] Jooble scraper connects and returns jobs (verify with free API key)
+- [ ] Indeed RSS scraper parses RSS feed and returns jobs (no auth needed)
+- [ ] USAJobs scraper returns US federal job listings
+- [ ] Source health tracking: consecutive failures increment, source goes on hold after threshold
+- [ ] Fallback chain: disable primary source → fallback activates → jobs still flow
+- [ ] Auto-recovery: after hold expires, primary source retries and recovers
+- [ ] Health endpoints return correct status for all sources
+- [ ] Prometheus metrics expose per-source health
+- [ ] Celery Beat schedule is dynamic (reads from source registry, not hardcoded)
+- [ ] Deprecated sources removed from default schedule (but code remains for reference)
+- [ ] `pytest tests/ -v` passes with new scraper tests
+- [ ] Integration test: disable all primary sources → verify fallbacks keep pipeline running
+
+---
+
+## 20. Future Phases
 
 These phases extend the platform beyond the core implementation:
 
-### Phase 16: Career Intelligence Agent
+### Phase 17: Career Intelligence Agent
 - Missing skill detection and learning path recommendations
 - Career progression suggestions
 - Interview preparation (generate questions + answer feedback)
 - Integration with learning platforms (Coursera, Udemy — optional)
 
-### Phase 17: Browser Automation Agent
+### Phase 18: Browser Automation Agent
 - Auto-fill job application forms on external portals
 - One-click apply for supported platforms
 - Headless browser integration (Playwright/Selenium)
 - Session management and CAPTCHA handling
 
-### Phase 18: Advanced AI Features
+### Phase 19: Advanced AI Features
 - RAG-based semantic job search (Qdrant/Weaviate vector DB)
 - Resume A/B testing (generate multiple versions, track performance)
 - Salary prediction and negotiation assistance
 - Network analysis (mutual connections at target companies)
 
-### Phase 19: Enterprise Features
+### Phase 20: Enterprise Features
 - Multi-user teams (shared job boards, collaborative applications)
 - SSO/SAML authentication
 - Audit logging for compliance

@@ -218,14 +218,31 @@ Create Profile
 - Schedule management (scrape intervals per source)
 - Source health monitoring
 
-**Sources (Planned):**
-- Naukri
-- Wellfound (AngelList)
-- RemoteOK
-- LinkedIn (via API/scraping)
+**Sources (Current State):**
+| Source | Type | Status | Reason |
+|--------|------|--------|--------|
+| RemoteOK | Public JSON API | ✅ Working | Reliable public API, ~100 jobs/scrape |
+| GenericCareerPage | HTML/CSS Scraper | ✅ Working | Configurable per company |
+| LinkedIn | HTML Scraper | ❌ Blocked | Public endpoint returns empty without session cookies |
+| Naukri | Playwright (Headless) | ❌ Blocked | Access Denied (bot detection) |
+| Wellfound | API + HTML | ❌ Blocked | Cloudflare 403 |
+
+**Replacement Sources (Phase 16):**
+| Source | Type | Replaces | Why |
+|--------|------|----------|-----|
+| Jooble API | REST JSON API | Naukri + LinkedIn | Free API key (no credit card), covers India + global jobs |
+| Indeed RSS | RSS/XML Feed | Wellfound + LinkedIn | Standard format, 20+ years stable, no auth needed |
+| USAJobs API | REST JSON API | — (new) | US government, 100% free, no API key needed, extremely reliable |
+
+**Sources (Planned for Phase 16):**
+- Jooble (free REST API)
+- Indeed RSS (standard RSS feed)
+- USAJobs (government API)
+- RemoteOK (existing, working)
 - Company career pages (generic scraper)
-- Indeed
-- Glassdoor
+
+**Design Philosophy — Resilient Source Mesh:**
+No single source should be relied upon. Each job category (remote, India, US, startup) has 2+ sources configured with automatic fallback chains. If a source fails 3 consecutive times, it's temporarily held and a fallback source is activated. See Section 4.3.1 for the full architecture.
 
 **Dependencies:**
 - PostgreSQL (job storage)
@@ -240,6 +257,149 @@ Create Profile
 | POST | `/api/v1/jobs/refresh` | Trigger immediate scrape |
 | GET | `/api/v1/jobs/sources` | List configured sources & status |
 | PUT | `/api/v1/jobs/sources/{id}` | Update source configuration |
+
+---
+
+### 4.3.1 Resilient Source Mesh Architecture
+
+**Purpose:** Ensure the job scraping pipeline continues functioning even when individual sources fail, by using categorized sources with automatic fallback chains and health tracking.
+
+**Core Principles:**
+1. **Never trust a single source** — each job category has 2+ sources
+2. **Prefer API over scraping** — APIs have contracts, HTML can change any day
+3. **Prefer RSS over custom APIs** — RSS has been stable for 20+ years
+4. **Fail open** — if all sources fail, serve cached data, don't crash
+5. **Measure everything** — track yield, failure rates, and response times per source
+
+#### Source Categories
+
+Sources are grouped by data type, because similar sources share failure modes:
+
+| Category | Examples | Failure Mode | Reliability |
+|----------|----------|-------------|-------------|
+| **Public JSON API** | RemoteOK, Jooble | Rate limiting, API deprecation | Medium |
+| **Government API** | USAJobs | Very stable, US-only | High |
+| **RSS/Atom Feed** | Indeed RSS, Stack Overflow RSS | Stable format | High |
+| **HTML Scraper (headless)** | Naukri (Playwright) | Bot detection, DOM changes | Low |
+| **HTML Scraper (simple)** | Generic career pages | DOM changes | Low-Medium |
+| **Career Page Scraper** | GenericCareerPage | DOM changes | Medium |
+
+#### Fallback Chains
+
+Each job category defines a priority-ordered chain of sources:
+
+```
+REMOTE JOBS CHAIN:
+  1st: RemoteOK (public JSON API, working)
+  2nd: Jooble (free API, ~200 req/day)
+  3rd: Indeed RSS (standard RSS format)
+
+INDIA JOBS CHAIN:
+  1st: Jooble (covers India, free API)
+  2nd: Indeed RSS (indeed.co.in RSS)
+  3rd: Naukri Playwright (headless, fragile)
+
+US/GLOBAL JOBS CHAIN:
+  1st: RemoteOK (remote global)
+  2nd: USAJobs API (US government, no API key)
+  3rd: Indeed RSS (global)
+
+STARTUP JOBS CHAIN:
+  1st: RemoteOK (startups posting remote)
+  2nd: Jooble (aggregates many startup boards)
+  3rd: GenericCareerPage (configurable per startup)
+```
+
+#### Source Health Tracking
+
+Every source has a health record that tracks:
+
+| Field | Description |
+|-------|-------------|
+| `last_run_at` | Timestamp of last scrape attempt |
+| `last_run_status` | `success`, `failed`, or `running` |
+| `consecutive_failures` | Failures since last success |
+| `total_failures` | Lifetime failure count |
+| `total_jobs_found` | Lifetime jobs discovered |
+| `avg_response_time_ms` | Average response latency |
+| `is_on_hold` | `true` if source is temporarily disabled |
+| `hold_until` | Timestamp when hold expires |
+| `last_error` | Last error message for debugging |
+
+**Auto-Hold Logic:**
+- 3 consecutive failures → source is held for 120 minutes
+- While held, the fallback chain activates
+- After hold expires, source retries once
+- If it fails again, hold doubles (240 min, 480 min, etc.)
+- Alert fires after 3 consecutive holds
+
+#### Source Configuration
+
+Source configuration is data-driven, not code-driven. Sources are defined in a config dict (or DB table):
+
+```python
+SOURCE_REGISTRY = {
+    "remoteok": {
+        "type": "api",
+        "schedule_minutes": 60,
+        "max_failures_before_hold": 3,
+        "hold_duration_minutes": 120,
+        "fallbacks": ["jooble", "indeed-rss"],
+        "categories": ["remote", "global", "startup"],
+    },
+    "jooble": {
+        "type": "api",
+        "schedule_minutes": 120,
+        "max_failures_before_hold": 3,
+        "hold_duration_minutes": 60,
+        "fallbacks": ["indeed-rss", "remoteok"],
+        "categories": ["remote", "india", "global", "startup"],
+    },
+    "usajobs": {
+        "type": "api",
+        "schedule_minutes": 360,
+        "max_failures_before_hold": 5,
+        "hold_duration_minutes": 1440,
+        "fallbacks": [],
+        "categories": ["us-govt"],
+    },
+    "indeed-rss": {
+        "type": "rss",
+        "schedule_minutes": 120,
+        "max_failures_before_hold": 3,
+        "hold_duration_minutes": 60,
+        "fallbacks": ["remoteok"],
+        "categories": ["remote", "india", "global"],
+    },
+}
+```
+
+#### Health-Aware Scheduler
+
+The Celery Beat schedule becomes dynamic — it reads source health before scheduling:
+
+```python
+def get_beat_schedule():
+    """Build dynamic beat schedule from source registry + health."""
+    schedule = {}
+    for name, config in SOURCE_REGISTRY.items():
+        if not is_source_on_hold(name):
+            schedule[f"scrape-{name}-every-{config['schedule_minutes']}m"] = {
+                "task": "app.tasks.scrape_jobs",
+                "schedule": config["schedule_minutes"] * 60,
+                "args": (name,),
+            }
+    return schedule
+```
+
+#### API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/jobs/sources/health` | All sources with health status |
+| GET | `/api/v1/jobs/sources/{id}/health` | Single source health detail |
+| POST | `/api/v1/jobs/sources/{id}/unhold` | Manually release a held source |
+| PUT | `/api/v1/jobs/sources/{id}/config` | Update source config |
 
 ---
 
@@ -876,28 +1036,65 @@ CREATE INDEX idx_ai_logs_created ON ai_execution_logs(created_at DESC);
 | `email.opened` | Email Webhook | Application Service | Update application status |
 | `email.replied` | Email Webhook | Application Service | Update status, notify user |
 
-### 7.3 Scheduled Job Scraping Pipeline
+### 7.3 Scheduled Job Scraping Pipeline (Phase 16+)
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Scheduler (Celery Beat)               │
-│                                                         │
-│  Every 30 min  ───▶  Scrape Naukri                      │
-│  Every 60 min  ───▶  Scrape Wellfound                   │
-│  Every 30 min  ───▶  Scrape RemoteOK                    │
-│  Every 120 min ───▶  Scrape Company Career Pages        │
-└─────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────┐
+│              Health-Aware Scheduler (Celery Beat)                   │
+│                                                                    │
+│  ┌─────────────────────────────────────────────────────┐           │
+│  │  get_beat_schedule() reads source registry + health │           │
+│  │  Skips sources that are ON_HOLD                     │           │
+│  │  Activates fallback chains when primary fails       │           │
+│  └─────────────────────────────────────────────────────┘           │
+│                                                                    │
+│  ┌─── ACTIVE SOURCES ──────────────────────────────────────┐       │
+│  │                                                         │       │
+│  │  Every  60 min  RemoteOK  (Public JSON API)    ✅ Working│       │
+│  │  Every 120 min  Jooble    (Free REST API)       🆕 Phase 16│       │
+│  │  Every 120 min  Indeed RSS (RSS/XML Feed)       🆕 Phase 16│       │
+│  │  Every 360 min  USAJobs   (Government API)      🆕 Phase 16│       │
+│  │  Every 120 min  Generic   (Career page scraper)  ✅ Working│       │
+│  └──────────────────────────────────────────────────────────┘       │
+│                                                                    │
+│  ┌─── BLOCKED SOURCES (deprecated, code retained as reference) ─┐  │
+│  │  LinkedIn  ❌ HTML scraper → replaced by Jooble + Indeed RSS  │  │
+│  │  Naukri    ❌ Playwright    → replaced by Jooble (India)      │  │
+│  │  Wellfound ❌ Cloudflare    → replaced by Indeed RSS + Jooble │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+│                                                                    │
+│  ┌─── FALLBACK CHAINS ─────────────────────────────────────┐       │
+│  │  Remote failover:   RemoteOK → Jooble → Indeed RSS      │       │
+│  │  India failover:    Jooble → Indeed RSS → Naukri (last) │       │
+│  │  US/Govt failover:  USAJobs → RemoteOK → Indeed RSS    │       │
+│  │  Startup failover:  RemoteOK → Jooble → Generic         │       │
+│  └──────────────────────────────────────────────────────────┘       │
+└────────────────────────────────────────────────────────────────────┘
                               │
                               ▼
-┌─────────────────────────────────────────────────────────┐
-│                    Job Scraper Workers                    │
-│                                                         │
-│  1. Fetch raw page/API response                         │
-│  2. Parse & normalize into job schema                   │
-│  3. Deduplicate against existing jobs                   │
-│  4. Upsert into jobs table                              │
-│  5. Emit job.scraped event                              │
-└─────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────┐
+│                 Job Scraper Workers (per source)                    │
+│                                                                    │
+│  1. SourceHealthService: check if source is ON_HOLD                │
+│     - If on hold → try first fallback source instead               │
+│     - If all fallbacks fail → log alert, emit scraper.dead event   │
+│                                                                    │
+│  2. Fetch raw data (API call / RSS parse / HTML scrape)            │
+│     - Success → clear consecutive_failures, update last_run_at     │
+│     - Failure → increment consecutive_failures                     │
+│       - If >= max_failures_before_hold → set ON_HOLD for N minutes │
+│       - Alert if 3 consecutive holds occurred                      │
+│                                                                    │
+│  3. Parse & normalize into unified Job schema (JobNormalizer)      │
+│  4. Deduplicate against existing jobs (DeduplicationService)       │
+│  5. Upsert into jobs table                                         │
+│  6. Mark dedup keys as seen (Redis, TTL-based)                     │
+│  7. Update source health: total_jobs_found, avg_response_time_ms   │
+│  8. Emit job.scraped event → triggers Match Service               │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+> **Note:** Scrape intervals are configured conservatively to avoid rate limiting. Jooble's free tier allows ~200 requests/day. USAJobs is scraped every 6 hours as federal listings change slowly. Fallback chains ensure the pipeline continues producing jobs even when a primary source fails. Source health data is exposed via `GET /api/v1/jobs/sources/health` and tracked in Prometheus metrics.
 ```
 
 ---
@@ -1280,11 +1477,14 @@ service_name/
 | `compute_matches` | `matches` | 2 retries, 1min delay | Batch match computation |
 | `optimize_resume_ats` | `ai` | 2 retries, 30s delay | ATS optimization via AI |
 
-### 11.3 Celery Configuration
+### 11.3 Celery Configuration — Dynamic Scheduler (Phase 16+)
+
+The Celery Beat schedule is built **dynamically** at worker startup by reading the source registry and health status. This replaces the old hardcoded schedule that referenced broken scrapers (LinkedIn, Naukri, Wellfound).
 
 ```python
 # celery_config.py
 from celery import Celery
+from celery.schedules import crontab
 
 celery_app = Celery(
     "career_platform",
@@ -1309,29 +1509,97 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,  # One task at a time per worker
     task_default_retry_delay=60,   # Default retry delay (seconds)
     task_max_retries=3,             # Default max retries
-    beat_schedule={
-        "scrape-naukri-every-30min": {
-            "task": "job_service.tasks.scrape_jobs",
-            "schedule": crontab(minute="*/30"),
-            "args": ("naukri",),
-        },
-        "scrape-wellfound-every-60min": {
-            "task": "job_service.tasks.scrape_jobs",
-            "schedule": crontab(minute="0 *"),
-            "args": ("wellfound",),
-        },
-        "scrape-remoteok-every-30min": {
-            "task": "job_service.tasks.scrape_jobs",
-            "schedule": crontab(minute="*/30"),
-            "args": ("remoteok",),
-        },
-        "compute-matches-every-15min": {
-            "task": "match_service.tasks.compute_new_matches",
-            "schedule": crontab(minute="*/15"),
-        },
-    },
 )
+
+
+def get_beat_schedule() -> dict:
+    """
+    Build the Celery Beat schedule dynamically from SOURCE_REGISTRY
+    and source health. Sources that are ON_HOLD are skipped entirely.
+    Fallback chains are activated automatically when a primary source
+    is held — see 4.3.1 Resilient Source Mesh Architecture.
+    """
+    from job_service.services.source_health import is_source_on_hold
+    from job_service.scrapers import SOURCE_REGISTRY
+
+    schedule = {}
+
+    for name, config in SOURCE_REGISTRY.items():
+        if is_source_on_hold(name):
+            # Source is held due to consecutive failures.
+            # Fallback chain will activate when this task is delegated.
+            continue
+
+        interval = config.get("schedule_minutes", 120)
+        schedule[f"scrape-{name}-every-{interval}m"] = {
+            "task": "job_service.tasks.scrape_jobs",
+            "schedule": interval * 60,
+            "args": (name,),
+        }
+
+    # Always-on global tasks (not source-specific)
+    schedule["refresh-stale-sources-every-4-hours"] = {
+        "task": "job_service.tasks.refresh_stale_sources",
+        "schedule": 4 * 60 * 60,
+    }
+    schedule["compute-matches-every-15min"] = {
+        "task": "match_service.tasks.compute_new_matches",
+        "schedule": crontab(minute="*/15"),
+    }
+    schedule["source-health-check-every-30min"] = {
+        "task": "job_service.tasks.check_source_health",
+        "schedule": 30 * 60,
+    }
+
+    return schedule
+
+
+# Wire up the dynamic schedule at import time
+celery_app.conf.beat_schedule = get_beat_schedule()
 ```
+
+**How the dynamic schedule resolves at startup:**
+
+| Source | Interval | Registered? | Notes |
+|--------|----------|-------------|-------|
+| `remoteok` | 60 min | ✅ Yes | Working; available in SOURCE_REGISTRY |
+| `jooble` | 120 min | ✅ Yes | New Phase 16 source; added to SOURCE_REGISTRY |
+| `indeed-rss` | 120 min | ✅ Yes | New Phase 16 source; RSS feed, no API key needed |
+| `usajobs` | 360 min | ✅ Yes | New Phase 16 source; US government API |
+| `generic` | 120 min | ✅ Yes | Career page scraper; configurable per company |
+| — | — | ❌ Skipped if held | Source with 3+ consecutive failures → ON_HOLD → skipped |
+| `linkedin` | — | ❌ Not in registry | Removed; replaced by Jooble + Indeed RSS |
+| `naukri` | — | ❌ Not in registry | Removed; replaced by Jooble (India fallback) |
+| `wellfound` | — | ❌ Not in registry | Removed; replaced by Indeed RSS + Jooble |
+
+**Dynamic scheduler flow:**
+
+```
+Celery Beat starts
+    │
+    ▼
+get_beat_schedule() called
+    │
+    ├── Read SOURCE_REGISTRY (config dict)
+    ├── For each source:
+    │   ├── Check is_source_on_hold(name)
+    │   ├── If held → skip (fallback chain activates at scrape time)
+    │   └── If healthy → register beat entry with interval
+    │
+    └── Add always-on tasks (health check, stale refresh, matching)
+         │
+         ▼
+    celery_app.conf.beat_schedule = { ... }  # final schedule
+         │
+         ▼
+    Celery Beat dispatches tasks according to schedule
+```
+
+> **Why dynamic instead of hardcoded?** The old hardcoded schedule referenced broken scrapers (LinkedIn, Naukri, Wellfound) that produced 0 jobs but consumed resources every 60–120 minutes. The dynamic schedule:
+> 1. Only registers healthy sources
+> 2. Can be updated at runtime by modifying SOURCE_REGISTRY (no code deploy needed)
+> 3. Automatically skips held sources and lets fallback chains handle the gap
+> 4. Includes a `source-health-check-every-30min` task that retries held sources when their hold expires
 
 ---
 
@@ -1838,14 +2106,20 @@ const queryClient = new QueryClient({
 | **P14: Frontend Testing & QA** | Unit tests, integration tests (MSW), E2E tests (Playwright), component storybook, visual regression tests | P13 completed |
 | **P15: Advanced Frontend Features** | Real-time WebSocket updates, offline PWA support, push notifications, keyboard shortcuts, dark mode, i18n | P14 completed |
 
-### 17.3 Future Phases
+### 17.3 Backend Resilience Phase
 
 | Phase | Features | Dependencies |
 |-------|----------|-------------|
-| **P16: Career Intelligence Agent** | Missing skill detection and learning path recommendations, interview preparation | AI Orchestrator (Career Intelligence Agent) |
-| **P17: Browser Automation Agent** | Auto-fill job application forms on external portals, one-click apply, headless browser integration | Browser automation framework |
-| **P18: Advanced AI Features** | RAG-based semantic job search (Qdrant/Weaviate vector DB), resume A/B testing, salary prediction | Vector database, AI Orchestrator |
-| **P19: Enterprise Features** | Multi-user teams, SSO/SAML, audit logging, admin dashboard | All services |
+| **P16: Job Source Resilience & Scraper Replacement** | Replace 3 broken scrapers (LinkedIn, Naukri, Wellfound) with Jooble, Indeed RSS, USAJobs; add source health tracking, auto-fallback chains, and dynamic Celery Beat schedule | P5 (Job Service framework) |
+
+### 17.4 Future Phases
+
+| Phase | Features | Dependencies |
+|-------|----------|-------------|
+| **P17: Career Intelligence Agent** | Missing skill detection and learning path recommendations, interview preparation | AI Orchestrator (Career Intelligence Agent) |
+| **P18: Browser Automation Agent** | Auto-fill job application forms on external portals, one-click apply, headless browser integration | Browser automation framework |
+| **P19: Advanced AI Features** | RAG-based semantic job search (Qdrant/Weaviate vector DB), resume A/B testing, salary prediction | Vector database, AI Orchestrator |
+| **P20: Enterprise Features** | Multi-user teams, SSO/SAML, audit logging, admin dashboard | All services |
 
 ---
 
@@ -1929,7 +2203,7 @@ const queryClient = new QueryClient({
 
 ---
 
-> **Document Version:** 1.1  
+> **Document Version:** 1.2  
 > **Author:** Architecture Team  
-> **Last Updated:** June 18, 2026  
-> **Next Review:** Phase 11 (Frontend Real Data Integration) completion
+> **Last Updated:** June 25, 2026  
+> **Next Review:** Phase 16 (Job Source Resilience & Scraper Replacement) completion
