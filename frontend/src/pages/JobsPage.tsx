@@ -16,6 +16,7 @@ export default function JobsPage() {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [location, setLocation] = useState("");
   const [locationType, setLocationType] = useState("");
   const [employmentType, setEmploymentType] = useState("");
   const [salaryMin, setSalaryMin] = useState("");
@@ -36,6 +37,7 @@ export default function JobsPage() {
   // Build filters
   const filters: JobFilters = {
     ...(debouncedQuery && { query: debouncedQuery }),
+    ...(location && { location }),
     ...(locationType && { location_type: locationType }),
     ...(employmentType && { employment_type: employmentType }),
     ...(salaryMin && { salary_min: parseInt(salaryMin, 10) * 1000 }),
@@ -76,6 +78,7 @@ export default function JobsPage() {
   function handleFiltersReset() {
     setQuery("");
     setDebouncedQuery("");
+    setLocation("");
     setLocationType("");
     setEmploymentType("");
     setSalaryMin("");
@@ -108,7 +111,7 @@ export default function JobsPage() {
         <button
           onClick={() => setShowFilters((p) => !p)}
           className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm transition-colors ${
-            showFilters || locationType || employmentType
+            showFilters || location || locationType || employmentType || salaryMin || salaryMax
               ? "border-primary-300 bg-primary-50 text-primary-700"
               : "border-gray-300 text-gray-600 hover:bg-gray-50"
           }`}
@@ -121,7 +124,21 @@ export default function JobsPage() {
       {/* Filter panel */}
       {showFilters && (
         <div className="rounded-xl border bg-white p-4 shadow-sm">
-          <div className="grid gap-4 sm:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+            <div>
+              <label className="block text-xs font-medium text-gray-600">Location</label>
+              <input
+                type="text"
+                value={location}
+                onChange={(e) => {
+                  setLocation(e.target.value);
+                  setPage(1);
+                  setAllJobs([]);
+                }}
+                placeholder="City, state, or 'Remote'"
+                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              />
+            </div>
             <div>
               <label className="block text-xs font-medium text-gray-600">Location Type</label>
               <select
@@ -221,11 +238,11 @@ export default function JobsPage() {
             </div>
             <h3 className="text-lg font-semibold text-gray-900">No jobs found</h3>
             <p className="mt-1 text-sm text-gray-500 max-w-sm">
-              {debouncedQuery || locationType || employmentType || salaryMin || salaryMax
+              {debouncedQuery || location || locationType || employmentType || salaryMin || salaryMax
                 ? "No jobs match your filters. Try broadening your search."
                 : "There are no jobs available right now. Check back later."}
             </p>
-            {(debouncedQuery || locationType || employmentType || salaryMin || salaryMax) && (
+            {(debouncedQuery || location || locationType || employmentType || salaryMin || salaryMax) && (
               <button
                 onClick={handleFiltersReset}
                 className="mt-4 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 transition-colors"

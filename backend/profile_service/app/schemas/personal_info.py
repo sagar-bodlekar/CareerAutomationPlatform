@@ -44,6 +44,7 @@ class PersonalInfoUpdate(BaseModel):
     date_of_birth: date | None = None
     nationality: str | None = None
     pronouns: str | None = None
+    gender: str | None = None
     avatar_url: str | None = None
 
 

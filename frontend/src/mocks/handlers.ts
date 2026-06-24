@@ -205,7 +205,7 @@ export const handlers = [
         (j) =>
           j.title.toLowerCase().includes(query) ||
           j.company_name.toLowerCase().includes(query) ||
-          j.required_skills.some((s) => s.toLowerCase().includes(query)),
+          (j.required_skills?.some((s) => s.toLowerCase().includes(query)) ?? false),
       );
     }
 

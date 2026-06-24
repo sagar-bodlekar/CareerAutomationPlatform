@@ -144,20 +144,31 @@ export interface Job {
   title: string;
   company_name: string;
   company_url?: string;
-  company_logo_url?: string;
-  location: string;
-  location_type: string;
+  company_logo?: string;
+  location?: string;
+  location_type?: string;
+  is_remote?: boolean;
   salary_min?: number;
   salary_max?: number;
-  salary_currency: string;
-  description: string;
+  salary_currency?: string;
+  description?: string;
   requirements?: string;
-  required_skills: string[];
-  preferred_skills: string[];
-  experience_required?: string;
-  employment_type: string;
-  posted_date: string;
-  source_url: string;
+  required_skills?: string[];
+  nice_to_have_skills?: string[];
+  experience_min_years?: number;
+  experience_max_years?: number;
+  experience_level?: string;
+  education_required?: string;
+  employment_type?: string;
+  industry?: string;
+  posted_at?: string;
+  scraped_at?: string;
+  source_url?: string;
+  apply_url?: string;
+  application_deadline?: string;
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Match {

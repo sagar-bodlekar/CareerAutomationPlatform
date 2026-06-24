@@ -128,20 +128,26 @@ export default function JobDetailPage() {
               <h1 className="text-2xl font-bold text-gray-900">{job.title}</h1>
               <p className="text-lg text-gray-500">{job.company_name}</p>
               <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-gray-500">
-                <span className="flex items-center gap-1">
-                  <MapPin className="h-4 w-4" /> {job.location}
-                </span>
-                <span className="flex items-center gap-1">
-                  <Briefcase className="h-4 w-4" /> {job.employment_type}
-                </span>
+                {job.location && (
+                  <span className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4" /> {job.location}
+                  </span>
+                )}
+                {job.employment_type && (
+                  <span className="flex items-center gap-1">
+                    <Briefcase className="h-4 w-4" /> {job.employment_type.replace(/_/g, "-")}
+                  </span>
+                )}
                 {(job.salary_min || job.salary_max) && (
                   <span className="flex items-center gap-1">
                     <DollarSign className="h-4 w-4" /> {formatSalary(job.salary_min, job.salary_max, job.salary_currency)}
                   </span>
                 )}
-                <span className="flex items-center gap-1">
-                  <Clock className="h-4 w-4" /> {formatRelativeTime(job.posted_date)}
-                </span>
+                {job.posted_at && (
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-4 w-4" /> {formatRelativeTime(job.posted_at)}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -194,8 +200,8 @@ export default function JobDetailPage() {
           {requirementsList.length > 0 && (
             <div className="rounded-xl border bg-white p-6 shadow-sm">
               <h2 className="mb-3 text-lg font-semibold text-gray-900">Requirements</h2>
-              {job.experience_required && (
-                <p className="mb-3 text-sm font-medium text-gray-500">{job.experience_required}</p>
+              {job.experience_level && (
+                <p className="mb-3 text-sm font-medium text-gray-500">{job.experience_level} level</p>
               )}
               <ul className="list-inside list-disc space-y-1 text-sm text-gray-600">
                 {requirementsList.map((req, i) => (
@@ -206,11 +212,11 @@ export default function JobDetailPage() {
           )}
 
           {/* Preferred Skills */}
-          {job.preferred_skills?.length > 0 && (
+          {job.nice_to_have_skills && job.nice_to_have_skills.length > 0 && (
             <div className="rounded-xl border bg-white p-6 shadow-sm">
-              <h2 className="mb-3 text-lg font-semibold text-gray-900">Preferred Skills</h2>
+              <h2 className="mb-3 text-lg font-semibold text-gray-900">Nice-to-Have Skills</h2>
               <div className="flex flex-wrap gap-2">
-                {job.preferred_skills.map((skill) => (
+                {job.nice_to_have_skills.map((skill) => (
                   <span key={skill} className="rounded-full bg-purple-50 px-3 py-1 text-xs font-medium text-purple-700">
                     {skill}
                   </span>
@@ -264,7 +270,7 @@ export default function JobDetailPage() {
           </div>
 
           {/* Required Skills */}
-          {job.required_skills.length > 0 && (
+          {job.required_skills && job.required_skills.length > 0 && (
             <div className="rounded-xl border bg-white p-6 shadow-sm">
               <h3 className="mb-3 font-semibold text-gray-900">Required Skills</h3>
               <div className="flex flex-wrap gap-2">

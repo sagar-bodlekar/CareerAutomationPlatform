@@ -10,14 +10,14 @@ const mockJob: Job = {
   company_name: "Tech Corp",
   location: "San Francisco, CA",
   location_type: "remote",
-  employment_type: "full-time",
+  employment_type: "full_time",
   salary_min: 120000,
   salary_max: 180000,
   salary_currency: "USD",
   description: "Great job",
   required_skills: ["Python", "React"],
-  preferred_skills: ["Go"],
-  posted_date: "2026-06-10T00:00:00Z",
+  nice_to_have_skills: ["Go"],
+  posted_at: "2026-06-10T00:00:00Z",
   source_url: "https://example.com/job/1",
 };
 

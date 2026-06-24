@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
-import { MapPin, Briefcase, Clock } from "lucide-react";
+import { MapPin, Briefcase, Clock, DollarSign } from "lucide-react";
 import type { Job } from "../../types";
 import MatchScoreBadge from "./MatchScoreBadge";
+import { formatSalary } from "../../utils/formatters";
 
 interface Props {
   job: Job;
@@ -28,10 +29,10 @@ export default function JobCard({ job, matchScore, logo }: Props) {
             {matchScore !== undefined && <MatchScoreBadge score={matchScore} />}
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-gray-500">
-            <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {job.location}</span>
-            <span className="flex items-center gap-1"><Briefcase className="h-3 w-3" /> {job.employment_type}</span>
-            {job.salary_min && <span>💰 ${job.salary_min.toLocaleString()} - ${job.salary_max?.toLocaleString()}</span>}
-            <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {new Date(job.posted_date).toLocaleDateString()}</span>
+            {job.location && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {job.location}</span>}
+            {job.employment_type && <span className="flex items-center gap-1"><Briefcase className="h-3 w-3" /> {job.employment_type.replace(/_/g, "-")}</span>}
+            {(job.salary_min || job.salary_max) && <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> {formatSalary(job.salary_min, job.salary_max, job.salary_currency)}</span>}
+            {job.posted_at && <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {new Date(job.posted_at).toLocaleDateString()}</span>}
           </div>
           {job.required_skills && job.required_skills.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">

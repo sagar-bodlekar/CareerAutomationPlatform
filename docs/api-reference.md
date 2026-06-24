@@ -66,7 +66,9 @@ curl -X POST http://localhost/api/v1/profiles \
       "full_name": "John Doe",
       "email": "john@example.com",
       "phone": "+1-555-0123",
-      "location": "San Francisco, CA"
+      "location": "San Francisco, CA",
+      "gender": "Male",
+      "pronouns": "he/him"
     },
     "skills": [
       {"name": "Python", "proficiency": "expert"},
